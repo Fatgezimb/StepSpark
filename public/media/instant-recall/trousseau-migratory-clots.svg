@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" role="img" aria-labelledby="title desc">
+  <title id="title">Trousseau migratory clot pattern diagram</title>
+  <desc id="desc">A simplified diagram connecting pancreatic adenocarcinoma to mucin-driven hypercoagulability and migratory superficial thrombophlebitis.</desc>
+  <rect width="900" height="560" rx="34" fill="#111827"/>
+  <text x="56" y="78" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800">Migratory clots + pancreas</text>
+  <path d="M154 272c62-74 162-78 232-10 48 46 118 46 176 2 62-48 140-38 188 18" fill="none" stroke="#f97316" stroke-width="28" stroke-linecap="round"/>
+  <path d="M198 276c44-34 92-30 136 4" fill="none" stroke="#fed7aa" stroke-width="12" stroke-linecap="round"/>
+  <g fill="#ef4444" opacity=".9">
+    <circle cx="272" cy="188" r="18"/>
+    <circle cx="438" cy="336" r="18"/>
+    <circle cx="610" cy="214" r="18"/>
+    <circle cx="704" cy="322" r="18"/>
+  </g>
+  <g font-family="Inter, Arial, sans-serif" font-weight="800">
+    <rect x="78" y="406" width="238" height="76" rx="20" fill="#7f1d1d" stroke="#fca5a5" stroke-width="3"/>
+    <text x="197" y="454" fill="#fee2e2" font-size="24" text-anchor="middle">Migratory clots</text>
+    <rect x="354" y="406" width="192" height="76" rx="20" fill="#713f12" stroke="#fbbf24" stroke-width="3"/>
+    <text x="450" y="454" fill="#fef3c7" font-size="24" text-anchor="middle">Mucin</text>
+    <rect x="584" y="406" width="238" height="76" rx="20" fill="#7f1d1d" stroke="#fca5a5" stroke-width="3"/>
+    <text x="703" y="454" fill="#fee2e2" font-size="24" text-anchor="middle">Malignancy clue</text>
+  </g>
+</svg>

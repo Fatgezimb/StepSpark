@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" role="img" aria-labelledby="title desc">
+  <title id="title">Behcet oral genital ocular triad diagram</title>
+  <desc id="desc">A simplified visual triad for Behcet disease showing oral ulcers, genital ulcers, and uveitis.</desc>
+  <rect width="900" height="560" rx="34" fill="#0b1224"/>
+  <text x="56" y="78" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800">Behcet triad</text>
+  <text x="56" y="116" fill="#c4b5fd" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600">Recurrent mucosa + eye inflammation</text>
+  <g font-family="Inter, Arial, sans-serif" font-weight="800" text-anchor="middle">
+    <circle cx="220" cy="282" r="112" fill="#7f1d1d" stroke="#fca5a5" stroke-width="4"/>
+    <text x="220" y="274" fill="#fee2e2" font-size="28">Oral</text>
+    <text x="220" y="312" fill="#fee2e2" font-size="28">ulcers</text>
+    <circle cx="450" cy="282" r="112" fill="#4c1d95" stroke="#c4b5fd" stroke-width="4"/>
+    <text x="450" y="274" fill="#ede9fe" font-size="28">Genital</text>
+    <text x="450" y="312" fill="#ede9fe" font-size="28">ulcers</text>
+    <circle cx="680" cy="282" r="112" fill="#164e63" stroke="#67e8f9" stroke-width="4"/>
+    <text x="680" y="274" fill="#cffafe" font-size="28">Uveitis</text>
+    <text x="680" y="312" fill="#cffafe" font-size="28">eye</text>
+  </g>
+  <path d="M333 282h4M563 282h4" stroke="#94a3b8" stroke-width="13" stroke-linecap="round"/>
+</svg>

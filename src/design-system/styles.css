@@ -1,0 +1,532 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--ds-font-sans);
+  --font-mono: var(--ds-font-mono);
+
+  --color-background: var(--ds-background);
+  --color-foreground: var(--ds-foreground);
+  --color-card: var(--ds-card);
+  --color-card-foreground: var(--ds-card-foreground);
+  --color-popover: var(--ds-popover);
+  --color-popover-foreground: var(--ds-popover-foreground);
+  --color-primary: var(--ds-primary);
+  --color-primary-foreground: var(--ds-primary-foreground);
+  --color-secondary: var(--ds-secondary);
+  --color-secondary-foreground: var(--ds-secondary-foreground);
+  --color-muted: var(--ds-muted);
+  --color-muted-foreground: var(--ds-muted-foreground);
+  --color-accent: var(--ds-accent);
+  --color-accent-foreground: var(--ds-accent-foreground);
+  --color-destructive: var(--ds-destructive);
+  --color-destructive-foreground: var(--ds-destructive-foreground);
+  --color-success: var(--ds-success);
+  --color-success-foreground: var(--ds-success-foreground);
+  --color-warning: var(--ds-warning);
+  --color-warning-foreground: var(--ds-warning-foreground);
+  --color-border: var(--ds-border);
+  --color-input: var(--ds-input);
+  --color-ring: var(--ds-ring);
+  --color-chart-1: var(--ds-chart-1);
+  --color-chart-2: var(--ds-chart-2);
+  --color-chart-3: var(--ds-chart-3);
+  --color-chart-4: var(--ds-chart-4);
+  --color-chart-5: var(--ds-chart-5);
+
+  --radius-xs: var(--ds-radius-xs);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
+  --radius-2xl: var(--ds-radius-2xl);
+
+  --shadow-card: var(--ds-shadow-card);
+  --shadow-popover: var(--ds-shadow-popover);
+  --shadow-focus: var(--ds-shadow-focus);
+
+  --ease-standard: var(--ds-ease-standard);
+  --ease-emphasized: var(--ds-ease-emphasized);
+  --animate-fade-in: ds-fade-in var(--ds-duration-normal) var(--ds-ease-standard);
+  --animate-slide-up: ds-slide-up var(--ds-duration-normal) var(--ds-ease-emphasized);
+  --animate-scale-in: ds-scale-in var(--ds-duration-fast) var(--ds-ease-emphasized);
+}
+
+:root {
+  color-scheme: light;
+  --ds-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ds-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --ds-background: oklch(98.2% 0.014 248);
+  --ds-foreground: oklch(18.8% 0.044 260);
+  --ds-card: oklch(100% 0 0);
+  --ds-card-foreground: var(--ds-foreground);
+  --ds-popover: oklch(100% 0 0);
+  --ds-popover-foreground: var(--ds-foreground);
+  --ds-primary: oklch(34.2% 0.149 261);
+  --ds-primary-foreground: oklch(98.5% 0.004 248);
+  --ds-secondary: oklch(94.8% 0.028 252);
+  --ds-secondary-foreground: oklch(24% 0.07 261);
+  --ds-muted: oklch(96.5% 0.016 250);
+  --ds-muted-foreground: oklch(45.8% 0.042 254);
+  --ds-accent: oklch(82.6% 0.171 88);
+  --ds-accent-foreground: oklch(23.6% 0.056 76);
+  --ds-destructive: oklch(56.8% 0.191 25);
+  --ds-destructive-foreground: oklch(98.5% 0.004 197);
+  --ds-success: oklch(45.8% 0.129 150);
+  --ds-success-foreground: oklch(98.7% 0.01 153);
+  --ds-warning: oklch(80.2% 0.158 82);
+  --ds-warning-foreground: oklch(22.4% 0.037 73);
+  --ds-border: oklch(86.8% 0.027 253);
+  --ds-input: oklch(86.8% 0.027 253);
+  --ds-ring: oklch(47.6% 0.146 260);
+
+  --ds-chart-1: oklch(37.6% 0.153 261);
+  --ds-chart-2: oklch(45.9% 0.185 303);
+  --ds-chart-3: oklch(63.5% 0.153 38);
+  --ds-chart-4: oklch(57.5% 0.121 153);
+  --ds-chart-5: oklch(62.7% 0.156 330);
+
+  --ds-exam-navy: oklch(25.6% 0.135 263);
+  --ds-exam-blue: oklch(39.2% 0.17 258);
+  --ds-exam-purple: oklch(36.9% 0.156 303);
+  --ds-exam-gold: oklch(84.6% 0.175 89);
+  --ds-exam-ink: oklch(17.2% 0.041 260);
+  --ds-exam-panel-blue: oklch(97% 0.025 247);
+  --ds-exam-panel-green: oklch(96.8% 0.036 151);
+  --ds-exam-panel-amber: oklch(97.4% 0.049 84);
+  --ds-exam-panel-purple: oklch(97% 0.033 305);
+
+  --ds-radius-xs: 0.25rem;
+  --ds-radius-sm: 0.375rem;
+  --ds-radius-md: 0.5rem;
+  --ds-radius-lg: 0.625rem;
+  --ds-radius-xl: 0.75rem;
+  --ds-radius-2xl: 1rem;
+
+  --ds-shadow-card: 0 1px 2px rgb(15 23 42 / 0.08), 0 10px 28px rgb(30 64 175 / 0.08);
+  --ds-shadow-popover: 0 18px 60px rgb(15 23 42 / 0.16);
+  --ds-shadow-focus: 0 0 0 3px color-mix(in oklch, var(--ds-ring), transparent 72%);
+
+  --ds-duration-fast: 120ms;
+  --ds-duration-normal: 180ms;
+  --ds-duration-slow: 260ms;
+  --ds-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ds-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --spark-space-1: 0.25rem;
+  --spark-space-2: 0.5rem;
+  --spark-space-3: 0.75rem;
+  --spark-space-4: 1rem;
+  --spark-text-micro: 0.68rem;
+  --spark-text-small: 0.8125rem;
+  --spark-text-body: 0.9375rem;
+  --spark-text-title: 1.375rem;
+  --spark-radius-panel: 0.875rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --ds-background: oklch(16.5% 0.046 263);
+  --ds-foreground: oklch(96.2% 0.008 237);
+  --ds-card: oklch(21.5% 0.054 263);
+  --ds-card-foreground: var(--ds-foreground);
+  --ds-popover: oklch(20.9% 0.028 237);
+  --ds-popover-foreground: var(--ds-foreground);
+  --ds-primary: oklch(72.2% 0.135 252);
+  --ds-primary-foreground: oklch(16.2% 0.058 263);
+  --ds-secondary: oklch(26.8% 0.066 263);
+  --ds-secondary-foreground: oklch(94.8% 0.01 237);
+  --ds-muted: oklch(26.1% 0.027 237);
+  --ds-muted-foreground: oklch(73.6% 0.023 241);
+  --ds-accent: oklch(70.4% 0.145 38);
+  --ds-accent-foreground: oklch(17.7% 0.025 46);
+  --ds-destructive: oklch(48.8% 0.185 25);
+  --ds-destructive-foreground: oklch(98.2% 0.005 25);
+  --ds-success: oklch(68.1% 0.126 153);
+  --ds-success-foreground: oklch(16.9% 0.036 153);
+  --ds-warning: oklch(78.1% 0.143 77);
+  --ds-warning-foreground: oklch(19.8% 0.037 73);
+  --ds-border: oklch(33.2% 0.035 237);
+  --ds-input: oklch(33.2% 0.035 237);
+  --ds-ring: oklch(70.5% 0.118 189);
+
+  --ds-chart-1: oklch(70.5% 0.118 189);
+  --ds-chart-2: oklch(72.7% 0.121 266);
+  --ds-chart-3: oklch(74.1% 0.137 38);
+  --ds-chart-4: oklch(71.6% 0.114 153);
+  --ds-chart-5: oklch(73.9% 0.136 330);
+
+  --ds-shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 34px rgb(0 0 0 / 0.22);
+  --ds-shadow-popover: 0 18px 70px rgb(0 0 0 / 0.4);
+}
+
+.spark-app {
+  min-height: 100dvh;
+  background-color: oklch(10.5% 0.039 258);
+  background:
+    radial-gradient(circle at 82% 0%, color-mix(in oklch, var(--ds-exam-purple), transparent 74%), transparent 31rem),
+    radial-gradient(circle at 28% -8%, color-mix(in oklch, var(--ds-primary), transparent 76%), transparent 29rem),
+    radial-gradient(circle at 12% 48%, color-mix(in oklch, var(--ds-success), transparent 91%), transparent 24rem),
+    linear-gradient(180deg, oklch(10.5% 0.039 258), oklch(14.6% 0.043 258) 42%, oklch(10.4% 0.031 260));
+}
+
+html:has(.spark-app),
+body:has(.spark-app),
+#root:has(.spark-app) {
+  background: oklch(10.5% 0.039 258);
+}
+
+.spark-sidebar {
+  background:
+    linear-gradient(180deg, rgb(3 8 20 / 0.94), rgb(9 16 35 / 0.94)),
+    radial-gradient(circle at 0% 0%, rgb(124 58 237 / 0.17), transparent 18rem);
+  box-shadow: inset -1px 0 rgb(255 255 255 / 0.04);
+}
+
+.spark-topbar {
+  background:
+    linear-gradient(180deg, rgb(5 10 24 / 0.9), rgb(5 10 24 / 0.72));
+  backdrop-filter: blur(18px);
+}
+
+.spark-panel {
+  border: 1px solid rgb(255 255 255 / 0.09);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.068), rgb(255 255 255 / 0.03)),
+    radial-gradient(circle at 0% 0%, rgb(59 130 246 / 0.09), transparent 16rem);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.22), inset 0 1px rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.spark-panel-strong {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(99 102 241 / 0.15), transparent 22rem),
+    linear-gradient(180deg, rgb(18 28 49 / 0.9), rgb(8 14 29 / 0.92));
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.26), inset 0 1px rgb(255 255 255 / 0.08);
+}
+
+.spark-soft-panel {
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.052), rgb(255 255 255 / 0.026));
+}
+
+.spark-card-title {
+  color: rgb(248 250 252);
+  letter-spacing: 0;
+}
+
+.spark-subtitle {
+  color: rgb(148 163 184);
+}
+
+.spark-badge {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.07);
+  color: rgb(226 232 240);
+}
+
+.spark-status-chip {
+  display: inline-flex;
+  min-height: 1.55rem;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.5rem;
+  padding: 0.22rem 0.55rem;
+  font-size: var(--spark-text-micro);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.08);
+}
+
+.spark-badge-gold {
+  border-color: rgb(251 191 36 / 0.32);
+  background: rgb(251 191 36 / 0.13);
+  color: rgb(254 240 138);
+}
+
+.spark-badge-rose {
+  border-color: rgb(244 63 94 / 0.34);
+  background: rgb(244 63 94 / 0.13);
+  color: rgb(253 164 175);
+}
+
+.spark-badge-violet {
+  border-color: rgb(139 92 246 / 0.36);
+  background: rgb(139 92 246 / 0.15);
+  color: rgb(196 181 253);
+}
+
+.spark-badge-green {
+  border-color: rgb(52 211 153 / 0.32);
+  background: rgb(16 185 129 / 0.13);
+  color: rgb(167 243 208);
+}
+
+.spark-answer-band {
+  border: 1px solid rgb(74 222 128 / 0.34);
+  background:
+    radial-gradient(circle at 3% 45%, rgb(34 197 94 / 0.34), transparent 10rem),
+    linear-gradient(90deg, rgb(20 83 45 / 0.88), rgb(17 33 51 / 0.88));
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.08), 0 12px 34px rgb(34 197 94 / 0.1);
+}
+
+.spark-warning-band {
+  border: 1px solid rgb(245 158 11 / 0.24);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(245 158 11 / 0.15), transparent 12rem),
+    linear-gradient(180deg, rgb(30 41 59 / 0.72), rgb(15 23 42 / 0.72));
+}
+
+.spark-rule-band {
+  border: 1px solid rgb(45 212 191 / 0.36);
+  background:
+    radial-gradient(circle at 8% 6%, rgb(45 212 191 / 0.3), transparent 9rem),
+    linear-gradient(145deg, rgb(12 55 66 / 0.88), rgb(15 23 42 / 0.86));
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.08), 0 16px 42px rgb(20 184 166 / 0.08);
+}
+
+.spark-card-section {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.062), rgb(255 255 255 / 0.027)),
+    radial-gradient(circle at 0% 0%, rgb(99 102 241 / 0.09), transparent 12rem);
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.055);
+}
+
+.spark-clue-card {
+  border: 1px solid rgb(167 139 250 / 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(139 92 246 / 0.22), transparent 10rem),
+    rgb(255 255 255 / 0.045);
+}
+
+.spark-scenario-text {
+  font-size: var(--spark-text-body);
+  line-height: 1.72;
+  color: rgb(241 245 249);
+}
+
+.spark-media-frame {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(2 6 23 / 0.72);
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.06);
+}
+
+.spark-why-table {
+  border: 1px solid rgb(255 255 255 / 0.11);
+  background: rgb(2 6 23 / 0.18);
+}
+
+.spark-phone-shell {
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background:
+    linear-gradient(180deg, rgb(15 23 42), rgb(2 6 23));
+  box-shadow: 0 22px 80px rgb(0 0 0 / 0.35), inset 0 0 0 6px rgb(255 255 255 / 0.045);
+}
+
+.spark-table-row {
+  border-color: rgb(255 255 255 / 0.07);
+}
+
+.spark-table-row:nth-child(even) {
+  background: rgb(255 255 255 / 0.035);
+}
+
+.spark-mini-chart-bar {
+  background: linear-gradient(180deg, rgb(96 165 250), rgb(45 212 191));
+  box-shadow: 0 0 16px rgb(45 212 191 / 0.14);
+}
+
+.dark .exam-panel,
+.dark .exam-panel-purple,
+.dark .exam-panel-green,
+.dark .exam-panel-amber,
+.dark .exam-control-surface {
+  border-color: rgb(255 255 255 / 0.09);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.03)),
+    radial-gradient(circle at 0% 0%, rgb(99 102 241 / 0.1), transparent 16rem);
+}
+
+.dark .exam-section-label {
+  color: rgb(125 211 252);
+}
+
+.exam-page-shell {
+  background:
+    radial-gradient(circle at 18% 4%, color-mix(in oklch, var(--ds-exam-gold), transparent 82%), transparent 28rem),
+    radial-gradient(circle at 82% 0%, color-mix(in oklch, var(--ds-exam-purple), transparent 84%), transparent 32rem),
+    linear-gradient(180deg, color-mix(in oklch, var(--ds-primary), transparent 94%), var(--ds-background) 22rem);
+}
+
+.exam-topbar {
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--ds-exam-navy), transparent 3%), var(--ds-exam-blue) 54%, var(--ds-exam-purple));
+  color: white;
+}
+
+.exam-banner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, white, transparent 78%);
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--ds-exam-gold), transparent 72%), transparent 16rem),
+    linear-gradient(135deg, var(--ds-exam-navy), var(--ds-exam-blue) 52%, var(--ds-exam-purple));
+  color: white;
+  box-shadow: 0 18px 50px rgb(30 64 175 / 0.18);
+}
+
+.exam-banner::after {
+  position: absolute;
+  inset: auto -8rem -12rem auto;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, white, transparent 90%);
+  content: "";
+}
+
+.exam-panel {
+  border-color: color-mix(in oklch, var(--ds-primary), transparent 75%);
+  background: linear-gradient(180deg, color-mix(in oklch, white, transparent 0%), color-mix(in oklch, var(--ds-exam-panel-blue), transparent 35%));
+}
+
+.exam-panel-purple {
+  border-color: color-mix(in oklch, var(--ds-exam-purple), transparent 70%);
+  background: linear-gradient(180deg, white, var(--ds-exam-panel-purple));
+}
+
+.exam-panel-green {
+  border-color: color-mix(in oklch, var(--ds-success), transparent 68%);
+  background: linear-gradient(180deg, white, var(--ds-exam-panel-green));
+}
+
+.exam-panel-amber {
+  border-color: color-mix(in oklch, var(--ds-warning), transparent 50%);
+  background: linear-gradient(180deg, white, var(--ds-exam-panel-amber));
+}
+
+.exam-section-label {
+  color: var(--ds-primary);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.exam-answer-band {
+  border-color: color-mix(in oklch, var(--ds-success), transparent 60%);
+  background:
+    radial-gradient(circle at 4% 50%, color-mix(in oklch, var(--ds-success), transparent 74%), transparent 10rem),
+    linear-gradient(90deg, color-mix(in oklch, var(--ds-success), transparent 86%), color-mix(in oklch, var(--ds-exam-gold), transparent 91%));
+}
+
+.exam-rule-band {
+  border-color: color-mix(in oklch, var(--ds-primary), transparent 68%);
+  background: linear-gradient(90deg, color-mix(in oklch, var(--ds-primary), transparent 88%), color-mix(in oklch, var(--ds-exam-purple), transparent 90%));
+}
+
+.exam-control-surface {
+  background: color-mix(in oklch, white, transparent 10%);
+  border-color: color-mix(in oklch, var(--ds-primary), transparent 76%);
+}
+
+@layer base {
+  * {
+    border-color: var(--ds-border);
+  }
+
+  html {
+    font-family: var(--ds-font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    background: var(--ds-background);
+    color: var(--ds-foreground);
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--ds-primary), transparent 78%);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ds-ring);
+    outline-offset: 2px;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+@keyframes ds-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ds-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ds-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media print {
+  .instant-recall-print-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    color: var(--ds-foreground);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .instant-recall-print-hide {
+    display: none !important;
+  }
+}

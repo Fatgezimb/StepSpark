@@ -1,0 +1,14 @@
+node_modules/
+dist/
+storybook-static/
+tmp/
+test-results/
+playwright-report/
+.DS_Store
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
