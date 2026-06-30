@@ -13,6 +13,12 @@ import {
   serializeCards,
   upsertCard,
 } from "./engine";
+import {
+  buildSubmittedReview,
+  getReviewMetrics,
+  toggleBookmarkReview,
+  type FluencyRating,
+} from "./review";
 import { seedInstantRecallCards } from "./seed";
 import {
   MAX_IMPORT_FILE_BYTES,
@@ -20,15 +26,25 @@ import {
   type InstantRecallCard,
   type RecallFilters,
 } from "./schema";
+import {
+  clearInstantRecallStorage,
+  loadPersistedCards,
+  loadPersistedReviews,
+  persistCards,
+  persistReviews,
+} from "./storage";
 
 export type EditorTab = "editor" | "import" | "shortcuts";
 
 const unsavedMessage = "Save or cancel the current edits before changing cards.";
 
 export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedInstantRecallCards) {
-  const [cards, setCards] = useState(initialCards);
+  const [storedCards] = useState(() => loadPersistedCards(initialCards));
+  const [storedReviews] = useState(() => loadPersistedReviews());
+  const [cards, setCards] = useState(storedCards.cards);
+  const [reviews, setReviews] = useState(storedReviews.reviews);
   const [filters, setFilters] = useState<RecallFilters>(defaultRecallFilters);
-  const [selectedCardId, setSelectedCardId] = useState(initialCards[0]?.id ?? "");
+  const [selectedCardId, setSelectedCardId] = useState(storedCards.cards[0]?.id ?? "");
   const [revealed, setRevealed] = useState(false);
   const [editingCard, setEditingCard] = useState<InstantRecallCard | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -36,16 +52,29 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
   const [editorNotice, setEditorNotice] = useState("");
   const [importText, setImportText] = useState("");
   const [importMessage, setImportMessage] = useState("");
+  const [storageWarning, setStorageWarning] = useState(
+    [storedCards.warning, storedReviews.warning].filter(Boolean).join(" "),
+  );
+  const [reviewMessage, setReviewMessage] = useState("");
 
   const filteredCards = useMemo(() => filterCards(cards, filters), [cards, filters]);
   const selectedCard = useMemo(
-    () => cards.find((card) => card.id === selectedCardId) ?? filteredCards[0] ?? cards[0],
-    [cards, filteredCards, selectedCardId],
+    () => filteredCards.find((card) => card.id === selectedCardId) ?? filteredCards[0] ?? null,
+    [filteredCards, selectedCardId],
   );
   const tags = useMemo(() => getAllTags(cards), [cards]);
   const summary = useMemo(() => getFilterSummary(cards, filters), [cards, filters]);
+  const reviewMetrics = useMemo(() => getReviewMetrics(cards, reviews), [cards, reviews]);
   const validationMessage = editingCard ? getCardValidationMessage(editingCard) : "";
   const canSave = Boolean(editingCard) && !validationMessage;
+
+  useEffect(() => {
+    persistCards(cards);
+  }, [cards]);
+
+  useEffect(() => {
+    persistReviews(reviews);
+  }, [reviews]);
 
   useEffect(() => {
     if (filteredCards.length > 0 && !filteredCards.some((card) => card.id === selectedCardId)) {
@@ -66,6 +95,7 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     setSelectedCardId(cardId);
     setRevealed(false);
     setEditorNotice("");
+    setReviewMessage("");
   }
 
   function startNewCard() {
@@ -109,6 +139,7 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
       setIsDirty(false);
       setEditorNotice("");
       setRevealed(false);
+      setReviewMessage("");
     } catch (error) {
       setEditorNotice(error instanceof Error ? error.message : "Card could not be saved.");
     }
@@ -138,10 +169,15 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     const nextCards = deleteCard(cards, selectedCard.id);
     setCards(nextCards);
     setSelectedCardId(nextCards[0]?.id ?? "");
+    setReviews((current) => {
+      const { [selectedCard.id]: _removed, ...remainingReviews } = current;
+      return remainingReviews;
+    });
     setEditingCard(null);
     setIsDirty(false);
     setEditorNotice("");
     setRevealed(false);
+    setReviewMessage("");
   }
 
   function duplicateSelectedCard() {
@@ -157,6 +193,7 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     setEditorNotice("");
     setEditorTab("editor");
     setRevealed(false);
+    setReviewMessage("");
   }
 
   function selectAdjacent(direction: "next" | "previous") {
@@ -169,6 +206,7 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     if (nextId) {
       setSelectedCardId(nextId);
       setRevealed(false);
+      setReviewMessage("");
     }
   }
 
@@ -196,6 +234,7 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
       setSelectedCardId(importedCards[0]?.id ?? nextCards[0]?.id ?? "");
       setImportMessage(`Imported ${importedCards.length} card${importedCards.length === 1 ? "" : "s"}.`);
       setImportText("");
+      setRevealed(false);
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : "Import failed.");
     }
@@ -214,9 +253,50 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
       setIsDirty(false);
       setImportMessage(`Replaced deck with ${importedCards.length} card${importedCards.length === 1 ? "" : "s"}.`);
       setImportText("");
+      setRevealed(false);
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : "Import failed.");
     }
+  }
+
+  function resetToSeed() {
+    if (hasBlockingUnsavedEdits()) {
+      return;
+    }
+
+    clearInstantRecallStorage();
+    setCards(initialCards);
+    setReviews({});
+    setFilters(clearRecallFilters());
+    setSelectedCardId(initialCards[0]?.id ?? "");
+    setEditingCard(null);
+    setIsDirty(false);
+    setRevealed(false);
+    setStorageWarning("");
+    setImportMessage("Local deck and review progress were reset to the draft seed deck.");
+    setReviewMessage("");
+  }
+
+  function submitReview(cardId: string, confidence: number, fluency: FluencyRating) {
+    const card = cards.find((item) => item.id === cardId);
+
+    if (!card) {
+      return;
+    }
+
+    setReviews((current) => ({
+      ...current,
+      [cardId]: buildSubmittedReview(card, current[cardId], confidence, fluency),
+    }));
+    setRevealed(true);
+    setReviewMessage("Review saved locally for this browser.");
+  }
+
+  function toggleBookmark(cardId: string) {
+    setReviews((current) => ({
+      ...current,
+      [cardId]: toggleBookmarkReview(current[cardId]),
+    }));
   }
 
   async function readImportFile(file: File | undefined) {
@@ -248,6 +328,9 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     filters,
     filteredCards,
     selectedCard,
+    selectedCardId,
+    reviews,
+    reviewMetrics,
     tags,
     summary,
     revealed,
@@ -256,6 +339,8 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     editorNotice,
     importText,
     importMessage,
+    storageWarning,
+    reviewMessage,
     canSave,
     isDirty,
     validationMessage,
@@ -264,6 +349,7 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     setEditorTab,
     setImportText,
     setRevealed,
+    setStorageWarning,
     selectCard,
     selectAdjacent,
     startNewCard,
@@ -278,6 +364,9 @@ export function useInstantRecallCards(initialCards: InstantRecallCard[] = seedIn
     mergeImportedCards,
     replaceWithImportedCards,
     readImportFile,
+    resetToSeed,
+    submitReview,
+    toggleBookmark,
     clearFilters: () => setFilters(clearRecallFilters()),
   };
 }

@@ -9,9 +9,9 @@ import {
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
+  FileJsonIcon,
   FlameIcon,
   LightbulbIcon,
-  MoreVerticalIcon,
   NetworkIcon,
   PrinterIcon,
   SparklesIcon,
@@ -23,16 +23,18 @@ import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/design-system/components/ui/badge";
 import { Button } from "@/design-system/components/ui/button";
 import { cn } from "@/design-system/lib/utils";
+import { resolvePublicAsset } from "../assets";
+import type { FluencyRating } from "../review";
 import type { InstantRecallCard, RecallVisualMedia } from "../schema";
 import { StatusBadge } from "./StatusBadge";
-
-export type FluencyRating = "red" | "yellow" | "green";
 
 export function CardViewer({
   card,
   revealed,
   confidence,
   fluency,
+  bookmarked,
+  reviewMessage,
   cardIndex,
   totalCards,
   onToggleReveal,
@@ -41,6 +43,9 @@ export function CardViewer({
   onEdit,
   onDuplicate,
   onDelete,
+  onBookmark,
+  onPrint,
+  onSubmitReview,
   onConfidenceChange,
   onFluencyChange,
 }: {
@@ -48,6 +53,8 @@ export function CardViewer({
   revealed: boolean;
   confidence: number;
   fluency: FluencyRating;
+  bookmarked: boolean;
+  reviewMessage: string;
   cardIndex: number;
   totalCards: number;
   onToggleReveal: () => void;
@@ -56,6 +63,9 @@ export function CardViewer({
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onBookmark: () => void;
+  onPrint: () => void;
+  onSubmitReview: () => void;
   onConfidenceChange: (confidence: number) => void;
   onFluencyChange: (fluency: FluencyRating) => void;
 }) {
@@ -110,9 +120,6 @@ export function CardViewer({
             <Button variant="outline" size="sm" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onNext}>
               Next
               <ArrowRightIcon data-icon="inline-end" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-white/10 hover:text-white" aria-label="More card actions planned" disabled>
-              <MoreVerticalIcon />
             </Button>
           </div>
         </div>
@@ -215,6 +222,21 @@ export function CardViewer({
               <FluencyButton value="green" active={fluency === "green"} label="G" onClick={onFluencyChange} />
             </div>
           </div>
+          <div className="spark-card-section rounded-xl p-4 sm:col-span-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-xs font-bold uppercase text-slate-400">Local review state</div>
+                <p className="mt-1 text-sm leading-6 text-slate-300">
+                  Save the current confidence and fluency for this browser.
+                </p>
+                {reviewMessage ? <p className="mt-1 text-sm font-semibold text-emerald-200" role="status">{reviewMessage}</p> : null}
+              </div>
+              <Button onClick={onSubmitReview}>
+                <BookOpenCheckIcon data-icon="inline-start" />
+                Save review
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -264,11 +286,19 @@ export function CardViewer({
               <CopyIcon data-icon="inline-start" />
               Duplicate
             </Button>
-            <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" disabled>
+            <Button
+              variant="outline"
+              className={cn(
+                "border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10",
+                bookmarked && "border-amber-300/35 bg-amber-400/16 text-amber-100",
+              )}
+              onClick={onBookmark}
+              aria-pressed={bookmarked}
+            >
               <BookmarkIcon data-icon="inline-start" />
-              Bookmark
+              {bookmarked ? "Bookmarked" : "Bookmark"}
             </Button>
-            <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" disabled>
+            <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onPrint}>
               <PrinterIcon data-icon="inline-start" />
               Print
             </Button>
@@ -428,14 +458,22 @@ function FluencyButton({
 
 export function CardMetadataRail({
   card,
+  bookmarked,
   onEdit,
   onDuplicate,
+  onBookmark,
+  onPrint,
   onExport,
+  onRelatedConcept,
 }: {
   card: InstantRecallCard;
+  bookmarked: boolean;
   onEdit: () => void;
   onDuplicate: () => void;
+  onBookmark: () => void;
+  onPrint: () => void;
   onExport: () => void;
+  onRelatedConcept: (concept: string) => void;
 }) {
   const relatedConcepts = buildRelatedConcepts(card);
 
@@ -465,24 +503,42 @@ export function CardMetadataRail({
         <div className="mb-2 text-xs font-semibold text-slate-500">Related Concepts</div>
         <div className="grid gap-1.5">
           {relatedConcepts.map((concept) => (
-            <a key={concept} href={`#${concept.toLowerCase().replace(/\s+/g, "-")}`} className="text-sm font-medium text-sky-300 underline-offset-4 hover:underline">
+            <button
+              key={concept}
+              type="button"
+              onClick={() => onRelatedConcept(concept)}
+              className="text-left text-sm font-medium text-sky-300 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25"
+            >
               {concept}
-            </a>
+            </button>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2 border-t border-white/10 pt-3">
+      <div className="grid grid-cols-5 gap-2 border-t border-white/10 pt-3">
         <Button variant="outline" size="icon" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onEdit} aria-label="Edit card from metadata panel">
           <BookOpenCheckIcon />
         </Button>
         <Button variant="outline" size="icon" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onDuplicate} aria-label="Duplicate card from metadata panel">
           <CopyIcon />
         </Button>
-        <Button variant="outline" size="icon" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" disabled aria-label="Bookmark card planned">
+        <Button
+          variant="outline"
+          size="icon"
+          className={cn(
+            "border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10",
+            bookmarked && "border-amber-300/35 bg-amber-400/16 text-amber-100",
+          )}
+          onClick={onBookmark}
+          aria-label={bookmarked ? "Remove bookmark from metadata panel" : "Bookmark card from metadata panel"}
+          aria-pressed={bookmarked}
+        >
           <BookmarkIcon />
         </Button>
-        <Button variant="outline" size="icon" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onExport} aria-label="Print or export card deck">
+        <Button variant="outline" size="icon" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onPrint} aria-label="Print card">
           <PrinterIcon />
+        </Button>
+        <Button variant="outline" size="icon" className="border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10" onClick={onExport} aria-label="Export JSON deck">
+          <FileJsonIcon />
         </Button>
       </div>
     </aside>
@@ -512,7 +568,7 @@ function VisualMediaPanel({ media, revealed }: { media: RecallVisualMedia; revea
           </div>
         ) : (
           <img
-            src={media.imageUrl}
+            src={resolvePublicAsset(media.imageUrl)}
             alt={revealed ? media.description : "Visual recognition asset for this card"}
             className="h-full w-full object-cover"
             loading="lazy"

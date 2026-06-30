@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { DownloadIcon, FileJsonIcon, ImportIcon, KeyboardIcon, PlusIcon, SaveIcon, UploadIcon } from "lucide-react";
+import { DownloadIcon, FileJsonIcon, ImportIcon, KeyboardIcon, PlusIcon, RotateCcwIcon, SaveIcon, UploadIcon } from "lucide-react";
 import { Button } from "@/design-system/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/design-system/components/ui/card";
 import { Input } from "@/design-system/components/ui/input";
@@ -70,11 +70,12 @@ export function CardWorkbench({
   onMerge,
   onReplace,
   onExport,
+  onResetToSeed,
 }: {
   className?: string;
   editorTab: EditorTab;
   editingCard: InstantRecallCard | null;
-  selectedCard: InstantRecallCard | undefined;
+  selectedCard: InstantRecallCard | null;
   canSave: boolean;
   validationMessage: string;
   editorNotice: string;
@@ -91,6 +92,7 @@ export function CardWorkbench({
   onMerge: () => void;
   onReplace: () => void;
   onExport: () => void;
+  onResetToSeed: () => void;
 }) {
   return (
     <Card className={cn("spark-panel order-3 rounded-2xl xl:order-none", className)}>
@@ -128,6 +130,7 @@ export function CardWorkbench({
               onMerge={onMerge}
               onReplace={onReplace}
               onExport={onExport}
+              onResetToSeed={onResetToSeed}
             />
           </TabsContent>
           <TabsContent value="shortcuts">
@@ -152,7 +155,7 @@ function CardEditor({
   onNew,
 }: {
   card: InstantRecallCard | null;
-  selectedCard: InstantRecallCard | undefined;
+  selectedCard: InstantRecallCard | null;
   canSave: boolean;
   validationMessage: string;
   notice: string;
@@ -369,6 +372,7 @@ function ImportExportPanel({
   onMerge,
   onReplace,
   onExport,
+  onResetToSeed,
 }: {
   importText: string;
   importMessage: string;
@@ -377,8 +381,10 @@ function ImportExportPanel({
   onMerge: () => void;
   onReplace: () => void;
   onExport: () => void;
+  onResetToSeed: () => void;
 }) {
   const [confirmReplace, setConfirmReplace] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
     setConfirmReplace(false);
@@ -398,6 +404,34 @@ function ImportExportPanel({
           <FileJsonIcon data-icon="inline-start" />
           Export JSON
         </Button>
+      </div>
+
+      <div className="rounded-md border border-amber-300/25 bg-amber-500/8 p-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-100">
+          <RotateCcwIcon className="size-4" aria-hidden="true" />
+          Reset local prototype data
+        </div>
+        <p className="mb-3 text-sm leading-6 text-muted-foreground">
+          Restore the draft seed deck and clear local review progress in this browser.
+        </p>
+        {confirmReset ? (
+          <div className="grid gap-2">
+            <div className="text-sm text-amber-100" role="status">Reset the local deck to seed content?</div>
+            <div className="flex gap-2">
+              <Button className="flex-1" variant="destructive" onClick={onResetToSeed}>
+                Confirm reset
+              </Button>
+              <Button className="flex-1" variant="outline" onClick={() => setConfirmReset(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full" onClick={() => setConfirmReset(true)}>
+            <RotateCcwIcon data-icon="inline-start" />
+            Reset to seed deck
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border border-border p-4">

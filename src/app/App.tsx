@@ -26,10 +26,18 @@ import { Button } from "@/design-system/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/components/ui/card";
 import { Input } from "@/design-system/components/ui/input";
 import { cn } from "@/design-system/lib/utils";
-import { InstantRecallEngine } from "@/features/instant-recall/InstantRecallEngine";
+import { clearRecallFilters } from "@/features/instant-recall/engine";
+import {
+  InstantRecallEngine,
+  type InstantRecallCardsState,
+  type InstantRecallSection,
+} from "@/features/instant-recall/InstantRecallEngine";
+import type { ReviewMetrics } from "@/features/instant-recall/review";
+import type { InstantRecallCard, RecallSystem } from "@/features/instant-recall/schema";
+import { useInstantRecallCards } from "@/features/instant-recall/useInstantRecallCards";
 
 type NavItem = {
-  id: string;
+  id: InstantRecallSection;
   label: string;
   icon: LucideIcon;
   badge?: string;
@@ -53,34 +61,17 @@ const toolNavItems: NavItem[] = [
   { id: "nbme-challenge", label: "NBME Challenge", icon: TargetIcon, badge: "Beta" },
 ];
 
-const commandItems = [
-  "Instant Recall Card",
-  "Daily Review Queue",
-  "Card Library",
-  "Must Not Miss",
-  "Analytics",
-  "Card Editor",
-  "Import from Text",
-  "Concept Map",
-  "NBME Challenge",
-  "Keyboard Shortcuts",
-];
-
 function App() {
-  const [activeNav, setActiveNav] = useState("dashboard");
+  const cardsState = useInstantRecallCards();
+  const [activeNav, setActiveNav] = useState<InstantRecallSection>("dashboard");
   const [query, setQuery] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const commandRef = useRef<HTMLInputElement>(null);
 
-  const filteredCommandItems = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return commandItems.slice(0, 5);
-    }
-
-    return commandItems.filter((item) => item.toLowerCase().includes(normalizedQuery));
-  }, [query]);
+  const mainItems = useMemo(
+    () => mainNavItems.map((item) => (item.id === "daily-review" ? { ...item, badge: String(cardsState.reviewMetrics.dueToday) } : item)),
+    [cardsState.reviewMetrics.dueToday],
+  );
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -106,19 +97,22 @@ function App() {
           activeNav={activeNav}
           collapsed={sidebarCollapsed}
           onCollapse={() => setSidebarCollapsed((current) => !current)}
+          mainItems={mainItems}
           onNavigate={setActiveNav}
+          reviewMetrics={cardsState.reviewMetrics}
         />
         <div className="flex min-w-0 flex-col">
           <TopCommandBar
             query={query}
             commandRef={commandRef}
-            commandItems={filteredCommandItems}
+            cardsState={cardsState}
             onQueryChange={setQuery}
+            onNavigate={setActiveNav}
           />
           <main className="min-w-0 flex-1 px-3 py-3 sm:px-4 lg:px-5">
             <div className="mx-auto flex w-full max-w-[103rem] flex-col gap-3">
-              <MobileNavigation activeNav={activeNav} onNavigate={setActiveNav} />
-              <InstantRecallEngine />
+              <MobileNavigation activeNav={activeNav} mainItems={mainItems} onNavigate={setActiveNav} />
+              <InstantRecallEngine activeSection={activeNav} cardsState={cardsState} onNavigate={setActiveNav} />
             </div>
           </main>
         </div>
@@ -131,12 +125,16 @@ function Sidebar({
   activeNav,
   collapsed,
   onCollapse,
+  mainItems,
   onNavigate,
+  reviewMetrics,
 }: {
   activeNav: string;
   collapsed: boolean;
   onCollapse: () => void;
-  onNavigate: (id: string) => void;
+  mainItems: NavItem[];
+  onNavigate: (id: InstantRecallSection) => void;
+  reviewMetrics: ReviewMetrics;
 }) {
   return (
     <aside className="spark-sidebar hidden min-h-screen border-r border-white/10 lg:flex lg:flex-col">
@@ -160,10 +158,10 @@ function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 overflow-auto p-3" aria-label="Primary navigation">
-        <NavGroup label="Main" items={mainNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
+        <NavGroup label="Main" items={mainItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
         <NavGroup label="Create" items={createNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
         <NavGroup label="Tools" items={toolNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
-        <ProgressWidget collapsed={collapsed} />
+        <ProgressWidget collapsed={collapsed} reviewMetrics={reviewMetrics} />
       </nav>
 
       <div className={cn("border-t border-white/10 p-3", collapsed && "flex justify-center")}>
@@ -173,10 +171,10 @@ function Sidebar({
           </Button>
         ) : (
           <div className="flex items-center justify-between gap-2 text-slate-400">
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Shell preferences planned" disabled>
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Open preferences coming soon" onClick={() => onNavigate("preferences")}>
               <GaugeIcon />
             </Button>
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Learning compass planned" disabled>
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Open learning compass coming soon" onClick={() => onNavigate("learning-compass")}>
               <CompassIcon />
             </Button>
             <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-white/10 hover:text-white" onClick={onCollapse} aria-label="Collapse sidebar">
@@ -200,7 +198,7 @@ function NavGroup({
   items: NavItem[];
   activeNav: string;
   collapsed: boolean;
-  onNavigate: (id: string) => void;
+  onNavigate: (id: InstantRecallSection) => void;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -235,11 +233,15 @@ function NavGroup({
   );
 }
 
-function ProgressWidget({ collapsed }: { collapsed: boolean }) {
+function ProgressWidget({ collapsed, reviewMetrics }: { collapsed: boolean; reviewMetrics: ReviewMetrics }) {
+  const progressPercent = reviewMetrics.dueToday + reviewMetrics.reviewedToday > 0
+    ? Math.round((reviewMetrics.reviewedToday / (reviewMetrics.dueToday + reviewMetrics.reviewedToday)) * 100)
+    : 0;
+
   if (collapsed) {
     return (
       <div className="mt-auto flex justify-center">
-        <div className="size-10 rounded-full border-4 border-emerald-400 border-b-amber-400 border-l-rose-400" title="Today progress 76%" />
+        <div className="size-10 rounded-full border-4 border-emerald-400 border-b-amber-400 border-l-rose-400" title={`Today progress ${progressPercent}%`} />
       </div>
     );
   }
@@ -252,12 +254,12 @@ function ProgressWidget({ collapsed }: { collapsed: boolean }) {
       <CardContent className="flex flex-col gap-3 p-3 pt-0">
         <div className="flex items-center gap-3">
           <div className="grid size-16 place-items-center rounded-full border-[6px] border-emerald-400 border-b-amber-400 border-l-rose-400 text-sm font-bold text-white">
-            76%
+            {progressPercent}%
           </div>
           <div className="grid flex-1 gap-1 text-xs">
-            <MetricRow dot="bg-violet-400" label="Reviewed" value="18" />
-            <MetricRow dot="bg-emerald-400" label="Correct" value="14" />
-            <MetricRow dot="bg-amber-400" label="Avg Time" value="28s" />
+            <MetricRow dot="bg-violet-400" label="Reviewed" value={String(reviewMetrics.reviewedToday)} />
+            <MetricRow dot="bg-emerald-400" label="Correct" value={String(reviewMetrics.correctToday)} />
+            <MetricRow dot="bg-amber-400" label="Avg Time" value={`${reviewMetrics.averageTimeSeconds}s`} />
           </div>
         </div>
         <div className="border-t border-white/10 pt-3">
@@ -301,14 +303,51 @@ function LegendRow({ dot, label, detail }: { dot: string; label: string; detail:
 function TopCommandBar({
   query,
   commandRef,
-  commandItems,
+  cardsState,
   onQueryChange,
+  onNavigate,
 }: {
   query: string;
   commandRef: RefObject<HTMLInputElement | null>;
-  commandItems: string[];
+  cardsState: InstantRecallCardsState;
   onQueryChange: (value: string) => void;
+  onNavigate: (id: InstantRecallSection) => void;
 }) {
+  const results = useMemo(
+    () => buildSearchResults(query, cardsState.cards, cardsState.tags),
+    [cardsState.cards, cardsState.tags, query],
+  );
+
+  function selectResult(result: CommandSearchResult) {
+    if (result.kind === "card") {
+      cardsState.setFilters(clearRecallFilters());
+      cardsState.selectCard(result.cardId);
+      onNavigate("dashboard");
+    }
+
+    if (result.kind === "section") {
+      onNavigate(result.sectionId);
+    }
+
+    if (result.kind === "tag") {
+      cardsState.setFilters({ ...clearRecallFilters(), tags: [result.value] });
+      onNavigate("card-library");
+    }
+
+    if (result.kind === "system") {
+      cardsState.setFilters({ ...clearRecallFilters(), system: result.value as RecallSystem });
+      onNavigate("card-library");
+    }
+
+    if (result.kind === "concept") {
+      cardsState.setFilters({ ...clearRecallFilters(), query: result.value });
+      onNavigate("card-library");
+    }
+
+    onQueryChange("");
+    commandRef.current?.blur();
+  }
+
   return (
     <header className="spark-topbar sticky top-0 z-30 border-b border-white/10">
       <div className="flex min-h-16 flex-col gap-3 px-3 py-3 sm:px-4 lg:flex-row lg:items-center lg:px-5">
@@ -331,69 +370,126 @@ function TopCommandBar({
             ref={commandRef}
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && results[0]) {
+                event.preventDefault();
+                selectResult(results[0]);
+              }
+            }}
             className="h-10 border-white/10 bg-black/30 ps-9 pe-16 text-slate-100 shadow-inner placeholder:text-slate-500"
             placeholder="Search cards, concepts, tags..."
             aria-label="Search cards, concepts, tags"
+            role="combobox"
+            aria-expanded={Boolean(query.trim())}
+            aria-controls="top-command-results"
           />
           <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-xs text-slate-400 sm:flex">
             <CommandIcon className="size-3" aria-hidden="true" />
             K
           </div>
-          {query ? <CommandResults items={commandItems} query={query} /> : null}
+          {query ? <CommandResults results={results} query={query} onSelect={selectResult} /> : null}
         </div>
 
         <div className="ms-auto flex items-center gap-2 text-sm">
           <div className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-slate-200 sm:flex">
             <FlameIcon className="size-4 text-orange-400" aria-hidden="true" />
-            <span className="font-semibold">Streak 12</span>
+            <span className="font-semibold">Reviewed {cardsState.reviewMetrics.reviewedToday}</span>
           </div>
-          <Button variant="ghost" size="icon" className="text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Notifications planned" disabled>
+          <Button variant="ghost" size="icon" className="text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Open notifications coming soon" onClick={() => onNavigate("notifications")}>
             <BellIcon />
           </Button>
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] py-1 pe-2 ps-1">
+          <button
+            type="button"
+            onClick={() => onNavigate("preferences")}
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] py-1 pe-2 ps-1 text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25"
+            aria-label="Open preferences coming soon"
+          >
             <div className="grid size-8 place-items-center rounded-full bg-slate-700 text-xs font-bold text-white">ZS</div>
             <ChevronRightIcon className="size-3 text-slate-500" aria-hidden="true" />
-          </div>
+          </button>
         </div>
       </div>
     </header>
   );
 }
 
-function CommandResults({ items, query }: { items: string[]; query: string }) {
+type CommandSearchResult =
+  | {
+      kind: "card";
+      id: string;
+      label: string;
+      detail: string;
+      cardId: string;
+    }
+  | {
+      kind: "section";
+      id: string;
+      label: string;
+      detail: string;
+      sectionId: InstantRecallSection;
+    }
+  | {
+      kind: "tag" | "system" | "concept";
+      id: string;
+      label: string;
+      detail: string;
+      value: string;
+    };
+
+function CommandResults({
+  results,
+  query,
+  onSelect,
+}: {
+  results: CommandSearchResult[];
+  query: string;
+  onSelect: (result: CommandSearchResult) => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       className="spark-panel absolute left-0 right-0 top-12 z-40 rounded-xl p-2 shadow-popover"
-      role="listbox"
+      id="top-command-results"
+      role="region"
       aria-label="Command search results"
     >
       <div className="px-2 pb-1 text-xs text-slate-500">Results for "{query}"</div>
-      {items.length ? (
-        items.map((item) => (
+      {results.length ? (
+        results.map((item) => (
           <button
-            key={item}
+            key={item.id}
             type="button"
-            disabled
-            className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 opacity-80"
+            onClick={() => onSelect(item)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25"
           >
-            <span>{item}</span>
+            <span className="min-w-0">
+              <span className="block truncate font-semibold text-slate-100">{item.label}</span>
+              <span className="block truncate text-xs text-slate-500">{item.detail}</span>
+            </span>
             <ChevronRightIcon className="size-4 text-slate-600" aria-hidden="true" />
           </button>
         ))
       ) : (
-        <div className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No command surface found.</div>
+        <div className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No cards, concepts, tags, systems, or sections found.</div>
       )}
     </motion.div>
   );
 }
 
-function MobileNavigation({ activeNav, onNavigate }: { activeNav: string; onNavigate: (id: string) => void }) {
-  const mobileItems = [...mainNavItems.slice(0, 3), createNavItems[0]].filter((item): item is NavItem => Boolean(item));
+function MobileNavigation({
+  activeNav,
+  mainItems,
+  onNavigate,
+}: {
+  activeNav: string;
+  mainItems: NavItem[];
+  onNavigate: (id: InstantRecallSection) => void;
+}) {
+  const mobileItems = [...mainItems, ...createNavItems, ...toolNavItems];
 
   return (
-    <nav className="grid grid-cols-4 gap-2 lg:hidden" aria-label="Mobile navigation">
+    <nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="Mobile navigation">
       {mobileItems.map((item) => (
         <button
           key={item.id}
@@ -402,6 +498,7 @@ function MobileNavigation({ activeNav, onNavigate }: { activeNav: string; onNavi
           onClick={() => onNavigate(item.id)}
           className={cn(
             "spark-panel flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25",
+            "min-w-[5.7rem]",
             activeNav === item.id ? "text-white" : "text-slate-400",
           )}
         >
@@ -411,6 +508,83 @@ function MobileNavigation({ activeNav, onNavigate }: { activeNav: string; onNavi
       ))}
     </nav>
   );
+}
+
+function buildSearchResults(query: string, cards: InstantRecallCard[], tags: string[]): CommandSearchResult[] {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const sections = [...mainNavItems, ...createNavItems, ...toolNavItems].map((item) => ({
+    kind: "section" as const,
+    id: `section-${item.id}`,
+    label: item.label,
+    detail: "Navigate to section",
+    sectionId: item.id,
+  }));
+  const cardResults = cards
+    .filter((card) => getCardSearchText(card).includes(normalizedQuery))
+    .slice(0, 5)
+    .map((card) => ({
+      kind: "card" as const,
+      id: `card-${card.id}`,
+      label: card.title,
+      detail: `${card.system} · ${card.discipline} · ${card.tags.slice(0, 2).join(", ")}`,
+      cardId: card.id,
+    }));
+  const tagResults = tags
+    .filter((tag) => tag.includes(normalizedQuery))
+    .slice(0, 4)
+    .map((tag) => ({
+      kind: "tag" as const,
+      id: `tag-${tag}`,
+      label: tag,
+      detail: "Filter by tag",
+      value: tag,
+    }));
+  const systems = Array.from(new Set(cards.map((card) => card.system))).sort();
+  const systemResults = systems
+    .filter((system) => system.toLowerCase().includes(normalizedQuery))
+    .map((system) => ({
+      kind: "system" as const,
+      id: `system-${system}`,
+      label: system,
+      detail: "Filter by organ system",
+      value: system,
+    }));
+  const conceptResults = Array.from(new Set(cards.flatMap((card) => [card.discipline, card.visualCue, card.learningObjective])))
+    .filter((concept) => concept.toLowerCase().includes(normalizedQuery))
+    .slice(0, 3)
+    .map((concept) => ({
+      kind: "concept" as const,
+      id: `concept-${concept}`,
+      label: concept,
+      detail: "Search related card text",
+      value: concept,
+    }));
+  const sectionResults = sections.filter((section) => section.label.toLowerCase().includes(normalizedQuery));
+
+  return [...cardResults, ...tagResults, ...systemResults, ...conceptResults, ...sectionResults].slice(0, 8);
+}
+
+function getCardSearchText(card: InstantRecallCard) {
+  return [
+    card.title,
+    card.frontPrompt,
+    card.visualCue,
+    card.answer,
+    card.explanation,
+    card.trap,
+    card.system,
+    card.discipline,
+    card.tags.join(" "),
+    card.learningObjective,
+    card.highYieldRationale,
+  ]
+    .join(" ")
+    .toLowerCase();
 }
 
 export { App };

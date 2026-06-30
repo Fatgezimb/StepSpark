@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSubmittedReview,
+  getReviewMetrics,
+} from "./review";
+import {
   duplicateCard,
   filterCards,
   getAdjacentCardId,
@@ -9,6 +13,7 @@ import {
   serializeCards,
   upsertCard,
 } from "./engine";
+import { resolvePublicAsset } from "./assets";
 import { seedInstantRecallCards } from "./seed";
 import { CARD_SCHEMA_VERSION, DECK_SCHEMA_VERSION } from "./schema";
 
@@ -144,5 +149,24 @@ describe("Instant Recall card engine", () => {
     expect(getCardValidationMessage(aiGeneratedReviewedCard)).toContain(
       "AI-generated cards must be converted",
     );
+  });
+
+  it("resolves local public media under the configured Vite base path", () => {
+    expect(resolvePublicAsset("/media/instant-recall/digeorge-3-4-pouches.svg", "/StepSpark/")).toBe(
+      "/StepSpark/media/instant-recall/digeorge-3-4-pouches.svg",
+    );
+    expect(resolvePublicAsset("https://example.com/image.png", "/StepSpark/")).toBe("https://example.com/image.png");
+  });
+
+  it("derives review metrics from local review state", () => {
+    const firstCard = seedInstantRecallCards[0]!;
+    const review = buildSubmittedReview(firstCard, undefined, 5, "green", new Date().toISOString());
+    const metrics = getReviewMetrics(seedInstantRecallCards, { [firstCard.id]: review });
+
+    expect(metrics.reviewedToday).toBe(1);
+    expect(metrics.correctToday).toBe(1);
+    expect(metrics.greenCount).toBe(1);
+    expect(metrics.averageFluency).toBe(100);
+    expect(metrics.dueToday).toBe(seedInstantRecallCards.length - 1);
   });
 });
