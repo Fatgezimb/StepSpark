@@ -34,6 +34,14 @@ export function FilterPanel({
   onReset: () => void;
   onShowShortcuts: () => void;
 }) {
+  const activeFilters = [
+    filters.query.trim() ? `Search: ${filters.query.trim()}` : "",
+    filters.system !== "all" ? `System: ${formatOption(filters.system)}` : "",
+    filters.difficulty !== "all" ? `Difficulty: ${formatOption(filters.difficulty)}` : "",
+    filters.status !== "all" ? `Status: ${formatOption(filters.status)}` : "",
+    ...filters.tags.map((tag) => `Tag: ${tag}`),
+  ].filter(Boolean);
+
   return (
     <Card className="spark-panel order-2 rounded-2xl xl:order-none">
       <CardHeader className="border-b border-white/10">
@@ -54,9 +62,27 @@ export function FilterPanel({
               value={filters.query}
               onChange={(event) => onFiltersChange({ query: event.target.value })}
               className="ps-9"
-              placeholder="Search cards"
+              placeholder="Search title, clue, mechanism, trap..."
             />
           </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="text-xs font-bold uppercase text-slate-400">Active filters</div>
+            <Badge variant="outline">{activeFilters.length}</Badge>
+          </div>
+          {activeFilters.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {activeFilters.slice(0, 8).map((filter) => (
+                <Badge key={filter} className="border-cyan-300/18 bg-cyan-400/10 text-cyan-100" variant="outline">
+                  {filter}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-slate-500">Showing the full local deck. Use search, system, difficulty, status, or tags to narrow it.</p>
+          )}
         </div>
 
         <FilterSelect

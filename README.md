@@ -51,6 +51,26 @@ npm run test:e2e
 npm run ci
 ```
 
+## Instant Recall Keyboard Shortcuts
+
+Shortcuts are disabled while typing in inputs, textareas, selects, command search, or modal controls.
+
+- `Space` - reveal or hide the selected answer
+- `←` / `→` - previous or next card
+- `↑` / `↓` - move through card lists or major sections
+- `1`-`5` - set confidence
+- `R` / `Y` / `G` - set red, yellow, or green fluency
+- `N` / `P` - next or previous card
+- `E` - edit selected card
+- `Cmd/Ctrl+K` - focus command search
+
+## Visual Media Status
+
+Instant Recall visuals are draft educational assets. Every visual should retain
+source, license, provenance, and use-case metadata. Open-license/public-domain
+assets must keep attribution visible, and StepSpark-generated SVGs still require
+medical education review before production use.
+
 ## GitHub Pages Deployment
 
 This repository is configured to publish the Vite app to GitHub Pages with

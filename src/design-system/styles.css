@@ -207,6 +207,15 @@ body:has(.spark-app),
   box-shadow: 0 24px 80px rgb(0 0 0 / 0.26), inset 0 1px rgb(255 255 255 / 0.08);
 }
 
+.spark-mission-panel {
+  border: 1px solid rgb(103 232 249 / 0.16);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(34 211 238 / 0.15), transparent 22rem),
+    radial-gradient(circle at 92% 12%, rgb(244 63 94 / 0.11), transparent 18rem),
+    linear-gradient(135deg, rgb(12 22 41 / 0.96), rgb(8 13 28 / 0.96) 55%, rgb(7 12 25 / 0.98));
+  box-shadow: 0 24px 90px rgb(0 0 0 / 0.34), inset 0 1px rgb(255 255 255 / 0.09);
+}
+
 .spark-soft-panel {
   border: 1px solid rgb(255 255 255 / 0.08);
   background:
@@ -297,6 +306,14 @@ body:has(.spark-app),
   box-shadow: inset 0 1px rgb(255 255 255 / 0.055);
 }
 
+.spark-task-panel {
+  border: 1px solid rgb(167 139 250 / 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(139 92 246 / 0.22), transparent 18rem),
+    linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.028));
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.07), 0 16px 42px rgb(0 0 0 / 0.14);
+}
+
 .spark-clue-card {
   border: 1px solid rgb(167 139 250 / 0.18);
   background:
@@ -314,6 +331,19 @@ body:has(.spark-app),
   border: 1px solid rgb(255 255 255 / 0.12);
   background: rgb(2 6 23 / 0.72);
   box-shadow: inset 0 1px rgb(255 255 255 / 0.06);
+}
+
+.spark-media-canvas {
+  display: grid;
+  min-height: clamp(19rem, 37vw, 35rem);
+  place-items: center;
+  padding: 0.75rem;
+  background:
+    linear-gradient(180deg, rgb(248 250 252), rgb(226 232 240));
+}
+
+.spark-visual-dialog {
+  box-shadow: 0 28px 90px rgb(0 0 0 / 0.5), inset 0 1px rgb(255 255 255 / 0.08);
 }
 
 .spark-why-table {
@@ -514,6 +544,13 @@ body:has(.spark-app),
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .spark-media-canvas {
+    min-height: 17rem;
+    padding: 0.5rem;
   }
 }
 

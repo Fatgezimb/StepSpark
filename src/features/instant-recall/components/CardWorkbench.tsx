@@ -39,6 +39,8 @@ import { formatOption } from "./format";
 const shortcutRows = [
   ["/", "Focus search"],
   ["Space", "Reveal or hide answer"],
+  ["← / →", "Previous / next card"],
+  ["↑ / ↓", "Move through cards or sections"],
   ["1-5", "Set confidence"],
   ["R / Y / G", "Mark fluency"],
   ["N", "Next card"],
@@ -188,6 +190,15 @@ function CardEditor({
       {validationMessage ? <Notice message={validationMessage} tone="warning" /> : null}
       <EditorField id="card-title" label="Title">
         <Input id="card-title" value={card.title} onChange={(event) => onChange({ ...card, title: event.target.value })} />
+      </EditorField>
+      <EditorField id="card-task-prompt" label="Task prompt">
+        <Textarea
+          id="card-task-prompt"
+          value={card.taskPrompt ?? ""}
+          onChange={(event) => onChange({ ...card, taskPrompt: event.target.value })}
+          className="min-h-20"
+          placeholder="Inspect the visual and identify the key diagnosis or mechanism."
+        />
       </EditorField>
       <EditorField id="card-front-prompt" label="Recall prompt">
         <Textarea

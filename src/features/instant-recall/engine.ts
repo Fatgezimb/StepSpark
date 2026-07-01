@@ -61,6 +61,14 @@ export function createCardDraft(cards: InstantRecallCard[]): InstantRecallCard {
     ...emptyCardDraft,
     id: `irc-local-${cards.length + 1}-${Date.now()}`,
     title: "Untitled Instant Recall Card",
+    taskPrompt: "Draft task prompt pending author entry.",
+    frontPrompt: "Draft clinical stem pending author entry.",
+    visualCue: "Draft visual cue pending author entry.",
+    answer: "Draft answer pending medical review.",
+    explanation: "Draft explanation pending medical review.",
+    trap: "Draft trap or distractor warning pending author entry.",
+    learningObjective: "Draft learning objective pending author entry.",
+    highYieldRationale: "Draft high-yield rationale pending author entry.",
     createdAt: now,
     updatedAt: now,
   });
@@ -135,6 +143,7 @@ export function filterCards(cards: InstantRecallCard[], filters: RecallFilters) 
   return cards.filter((card) => {
     const searchable = [
       card.title,
+      getCardTaskPrompt(card),
       card.frontPrompt,
       card.visualCue,
       card.answer,
@@ -162,6 +171,18 @@ export function filterCards(cards: InstantRecallCard[], filters: RecallFilters) 
 
     return matchesQuery && matchesSystem && matchesDifficulty && matchesStatus && matchesTags;
   });
+}
+
+export function getCardTaskPrompt(card: InstantRecallCard) {
+  const explicitPrompt = card.taskPrompt?.trim();
+
+  if (explicitPrompt) {
+    return explicitPrompt;
+  }
+
+  const action = card.visualMedia.length ? "Inspect the visual and clinical stem" : "Read the clinical stem";
+
+  return `${action}; identify the ${card.discipline.toLowerCase()} diagnosis, mechanism, or association explained by the key clue: ${card.visualCue}`;
 }
 
 export function toggleFilterTag(filters: RecallFilters, tag: string): RecallFilters {
@@ -244,6 +265,7 @@ function normalizeImportedCard(value: unknown, index: number): InstantRecallCard
     schemaVersion: CARD_SCHEMA_VERSION,
     id: typeof value.id === "string" && value.id.trim() ? value.id : `irc-import-${Date.now()}-${index}`,
     title: asString(value.title, "Untitled Instant Recall Card"),
+    taskPrompt: optionalString(value.taskPrompt),
     frontPrompt: asString(value.frontPrompt, ""),
     visualCue: asString(value.visualCue, ""),
     answer: asString(value.answer, ""),

@@ -1,32 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIcon,
-  BarChart3Icon,
-  BookOpenCheckIcon,
-  BrainCircuitIcon,
   PlusIcon,
-  ShieldAlertIcon,
   ZapIcon,
 } from "lucide-react";
 import { Badge } from "@/design-system/components/ui/badge";
 import { Button } from "@/design-system/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/design-system/components/ui/card";
-import { cn } from "@/design-system/lib/utils";
-import { clearRecallFilters, toggleFilterTag } from "./engine";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/design-system/components/ui/card";
+import { resolvePublicAsset } from "./assets";
+import { clearRecallFilters, getCardTaskPrompt, toggleFilterTag } from "./engine";
 import { CardLibraryPanel } from "./components/CardLibrary";
 import { CardMetadataRail, CardViewer } from "./components/CardViewer";
 import { CardWorkbench } from "./components/CardWorkbench";
 import { FilterPanel } from "./components/FilterPanel";
-import type { FluencyRating, ReviewMetrics } from "./review";
+import {
+  LocalAnalyticsView,
+  MustNotMissQueue,
+  PrototypePreviewPanel,
+  ReviewQueuePanel,
+  SectionHeader,
+  TodayDashboard,
+  type DashboardSummary,
+} from "./components/StudySurfaces";
+import type { FluencyRating } from "./review";
 import type { InstantRecallCard } from "./schema";
 import { useInstantRecallCards } from "./useInstantRecallCards";
-
-type DashboardSummary = {
-  total: number;
-  filtered: number;
-  draft: number;
-  reviewed: number;
-};
 
 export type InstantRecallSection =
   | "dashboard"
@@ -49,6 +46,18 @@ type InstantRecallEngineProps = {
   cardsState?: InstantRecallCardsState;
   onNavigate?: (section: InstantRecallSection) => void;
 };
+
+const keyboardSectionOrder: InstantRecallSection[] = [
+  "dashboard",
+  "daily-review",
+  "card-library",
+  "must-not-miss",
+  "analytics",
+  "card-editor",
+  "import-text",
+  "concept-map",
+  "nbme-challenge",
+];
 
 export function InstantRecallEngine(props: InstantRecallEngineProps = {}) {
   if (props.cardsState) {
@@ -74,6 +83,7 @@ function InstantRecallEngineContent({
   onNavigate?: (section: InstantRecallSection) => void;
 }) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
   const [confidence, setConfidence] = useState(5);
   const [fluency, setFluency] = useState<FluencyRating>("yellow");
   const {
@@ -151,11 +161,12 @@ function InstantRecallEngineContent({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+      if (isGlobalShortcutBlocked(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
         return;
       }
 
       const key = event.key.toLowerCase();
+      const targetIsCardList = event.target instanceof HTMLElement && Boolean(event.target.closest("[data-card-list='true']"));
 
       if (event.key === "/") {
         event.preventDefault();
@@ -183,18 +194,40 @@ function InstantRecallEngineContent({
         return;
       }
 
-      if (key === "n" || key === "j" || event.key === "ArrowDown") {
+      if (key === "n" || key === "j" || event.key === "ArrowRight") {
         event.preventDefault();
         if (filteredCards.length) {
           selectAdjacent("next");
+          focusViewerSoon(viewerRef);
         }
         return;
       }
 
-      if (key === "p" || key === "k" || event.key === "ArrowUp") {
+      if (key === "p" || key === "k" || event.key === "ArrowLeft") {
         event.preventDefault();
         if (filteredCards.length) {
           selectAdjacent("previous");
+          focusViewerSoon(viewerRef);
+        }
+        return;
+      }
+
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+
+        if (targetIsCardList) {
+          if (filteredCards.length) {
+            selectAdjacent(event.key === "ArrowDown" ? "next" : "previous");
+            focusViewerSoon(viewerRef);
+          }
+
+          return;
+        }
+
+        if (onNavigate) {
+          onNavigate(getAdjacentSection(activeSection, event.key === "ArrowDown" ? "next" : "previous"));
+        } else if (filteredCards.length) {
+          selectAdjacent(event.key === "ArrowDown" ? "next" : "previous");
         }
         return;
       }
@@ -226,7 +259,7 @@ function InstantRecallEngineContent({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeEditorDraft, exportCards, filteredCards.length, selectAdjacent, selectedCard, setRevealed, startEditingCard]);
+  }, [activeSection, closeEditorDraft, exportCards, filteredCards.length, onNavigate, selectAdjacent, selectedCard, setRevealed, startEditingCard]);
 
   function handlePrint() {
     window.print();
@@ -237,12 +270,23 @@ function InstantRecallEngineContent({
     onNavigate?.("card-library");
   }
 
+  function handleOpenCard(cardId: string, nextSection: InstantRecallSection = "dashboard") {
+    selectCard(cardId);
+    onNavigate?.(nextSection);
+    focusViewerSoon(viewerRef);
+  }
+
+  function handleCreateCard() {
+    startNewCard();
+    onNavigate?.("card-editor");
+  }
+
   const selectedReview = selectedCard ? reviews[selectedCard.id] : undefined;
   const sectionMeta = getSectionMeta(activeSection);
 
   const workspace = (
     <section className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_18rem]" aria-label="Instant Recall learning workspace">
-      <div className="min-w-0">
+      <div ref={viewerRef} className="min-w-0 scroll-mt-24 focus-visible:outline-none" tabIndex={-1}>
         {selectedCard ? (
           <CardViewer
             card={selectedCard}
@@ -303,11 +347,9 @@ function InstantRecallEngineContent({
       <CardLibraryPanel
         cards={filteredCards}
         totalCards={cards.length}
+        reviews={reviews}
         selectedCardId={selectedCard?.id ?? ""}
-        onSelect={(cardId) => {
-          selectCard(cardId);
-          onNavigate?.("dashboard");
-        }}
+        onSelect={(cardId) => handleOpenCard(cardId, "card-library")}
       />
     </section>
   );
@@ -342,38 +384,32 @@ function InstantRecallEngineContent({
       return (
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid gap-3">{workspace}</div>
-          <DailyReviewQueue reviewMetrics={reviewMetrics} selectedCardId={selectedCard?.id ?? ""} onSelect={selectCard} />
+          <ReviewQueuePanel reviewMetrics={reviewMetrics} selectedCardId={selectedCard?.id ?? ""} onSelect={(cardId) => handleOpenCard(cardId, "daily-review")} />
         </div>
       );
     }
 
     if (activeSection === "card-library") {
-      return filtersAndLibrary;
+      return (
+        <section className="grid gap-3 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]" aria-label="Library browser and selected card">
+          {filtersAndLibrary}
+          {workspace}
+        </section>
+      );
     }
 
     if (activeSection === "must-not-miss") {
       return (
-        <section className="grid gap-3 xl:grid-cols-[minmax(20rem,0.6fr)_minmax(0,1.4fr)]">
-          <MustNotMissConcepts cards={cards} />
-          <CardLibraryPanel
-            cards={cards.filter((card) => card.difficulty === "hard" || card.tags.includes("oncology")).slice(0, 12)}
-            totalCards={cards.length}
-            selectedCardId={selectedCard?.id ?? ""}
-            onSelect={(cardId) => {
-              selectCard(cardId);
-              onNavigate?.("dashboard");
-            }}
-          />
+        <section className="grid gap-3 xl:grid-cols-[minmax(24rem,0.88fr)_minmax(0,1.12fr)]">
+          <MustNotMissQueue cards={cards} reviews={reviews} selectedCardId={selectedCard?.id ?? ""} onSelect={(cardId) => handleOpenCard(cardId, "must-not-miss")} />
+          {workspace}
         </section>
       );
     }
 
     if (activeSection === "analytics") {
       return (
-        <section className="grid gap-3 xl:grid-cols-[minmax(20rem,0.8fr)_minmax(0,1.2fr)]">
-          <DashboardPreview summary={summary} cards={cards} reviewMetrics={reviewMetrics} />
-          <AnalyticsPreview cards={cards} reviewMetrics={reviewMetrics} />
-        </section>
+        <LocalAnalyticsView cards={cards} reviews={reviews} reviewMetrics={reviewMetrics} />
       );
     }
 
@@ -387,54 +423,79 @@ function InstantRecallEngineContent({
     }
 
     if (activeSection === "concept-map") {
-      return <ComingSoonPanel title="Concept Map" cards={cards} description="A graph view for organ systems, tags, mechanisms, and related concepts." />;
+      return (
+        <PrototypePreviewPanel
+          title="Concept Map"
+          cards={cards}
+          description="A planned graph view for organ systems, tags, mechanisms, and related concepts."
+          previewItems={["Map systems to tags and visual cues", "Jump from concept nodes into real card review", "No graph database or generated relationships are active yet"]}
+        />
+      );
     }
 
     if (activeSection === "nbme-challenge") {
-      return <ComingSoonPanel title="NBME Challenge" cards={cards} description="A future challenge mode for turning reviewed cards into NBME-style stems." />;
+      return (
+        <PrototypePreviewPanel
+          title="NBME Challenge"
+          cards={cards}
+          description="A planned challenge mode for turning reviewed concepts into NBME-style practice stems."
+          previewItems={["No AI question generation is active", "Future stems must use reviewed content and citations", "Current prototype only previews workflow shape"]}
+        />
+      );
     }
 
     if (activeSection === "notifications") {
-      return <ComingSoonPanel title="Notifications" cards={cards} description="Planned review reminders and local study nudges will live here." />;
+      return <PrototypePreviewPanel title="Notifications" cards={cards} description="Planned review reminders and local study nudges will live here." />;
     }
 
     if (activeSection === "preferences") {
-      return <ComingSoonPanel title="Preferences" cards={cards} description="Theme, density, keyboard, and local data preferences are planned for this surface." />;
+      return <PrototypePreviewPanel title="Preferences" cards={cards} description="Theme, density, keyboard, and local data preferences are planned for this surface." />;
     }
 
     if (activeSection === "learning-compass") {
-      return <ComingSoonPanel title="Learning Compass" cards={cards} description="A future orientation view for weak systems, high-yield gaps, and next best study actions." />;
+      return <PrototypePreviewPanel title="Learning Compass" cards={cards} description="A planned orientation view for weak systems, high-yield gaps, and next best study actions." />;
     }
 
     return (
       <>
-        {workspace}
-        <section className="grid gap-3 xl:grid-cols-[minmax(18rem,0.78fr)_minmax(26rem,1.4fr)_minmax(20rem,0.98fr)]" aria-label="Learning dashboard modules">
-          <DashboardPreview summary={summary} cards={cards} reviewMetrics={reviewMetrics} />
-          <div className="grid min-w-0 gap-3">
-            <FilterPanel
-              filters={filters}
-              tags={tags}
-              searchRef={searchRef}
-              onFiltersChange={updateFilters}
-              onToggleTag={(tag) => setFilters((current) => toggleFilterTag(current, tag))}
-              onReset={clearFilters}
-              onShowShortcuts={() => setEditorTab("shortcuts")}
-            />
-            <CardLibraryPanel
-              cards={filteredCards}
-              totalCards={cards.length}
-              selectedCardId={selectedCard?.id ?? ""}
-              onSelect={selectCard}
-            />
-          </div>
-          <DailyReviewQueue reviewMetrics={reviewMetrics} selectedCardId={selectedCard?.id ?? ""} onSelect={selectCard} />
+        <TodayDashboard
+          summary={summary}
+          cards={cards}
+          reviews={reviews}
+          reviewMetrics={reviewMetrics}
+          selectedCard={selectedCard}
+          selectedReview={selectedReview}
+          onStartReview={() => onNavigate?.("daily-review")}
+          onBrowseLibrary={() => onNavigate?.("card-library")}
+          onCreateCard={handleCreateCard}
+          onImportDeck={() => onNavigate?.("import-text")}
+        />
+
+        <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]" aria-label="Primary review cockpit">
+          {workspace}
+          <ReviewQueuePanel
+            title="Due Next"
+            description="Select a due card, review it, then save confidence and fluency."
+            reviewMetrics={reviewMetrics}
+            selectedCardId={selectedCard?.id ?? ""}
+            onSelect={(cardId) => handleOpenCard(cardId, "dashboard")}
+          />
         </section>
 
-        <section className="grid gap-3 xl:grid-cols-[minmax(22rem,1.05fr)_minmax(18rem,0.95fr)_minmax(18rem,0.9fr)]" aria-label="Editor analytics and priority concepts">
+        <section className="grid gap-3 xl:grid-cols-[minmax(26rem,1.2fr)_minmax(20rem,0.8fr)]" aria-label="Browse and priority modules">
+          <CardLibraryPanel
+            cards={filteredCards.slice(0, 6)}
+            totalCards={cards.length}
+            reviews={reviews}
+            selectedCardId={selectedCard?.id ?? ""}
+            onSelect={(cardId) => handleOpenCard(cardId, "dashboard")}
+          />
+          <MustNotMissQueue cards={cards} reviews={reviews} selectedCardId={selectedCard?.id ?? ""} onSelect={(cardId) => handleOpenCard(cardId, "dashboard")} />
+        </section>
+
+        <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.86fr)]" aria-label="Local analytics and authoring">
+          <LocalAnalyticsView cards={cards} reviews={reviews} reviewMetrics={reviewMetrics} />
           {workbench}
-          <AnalyticsPreview cards={cards} reviewMetrics={reviewMetrics} />
-          <MustNotMissConcepts cards={cards} />
         </section>
       </>
     );
@@ -443,7 +504,7 @@ function InstantRecallEngineContent({
   return (
     <div className="flex flex-col gap-3">
       <DraftSafetyBanner warning={storageWarning} />
-      <SectionHeading title={sectionMeta.title} description={sectionMeta.description} />
+      <SectionHeader title={sectionMeta.title} description={sectionMeta.description} />
       {renderSection()}
       <KeyboardShortcutStrip />
     </div>
@@ -510,240 +571,39 @@ function DraftSafetyBanner({ warning }: { warning: string }) {
   );
 }
 
-function SectionHeading({ title, description }: { title: string; description: string }) {
-  return (
-    <section className="spark-panel rounded-2xl p-4" aria-label="Active section">
-      <div className="flex flex-col gap-1">
-        <div className="text-xs font-bold uppercase text-sky-300">Current section</div>
-        <h2 className="text-2xl font-bold leading-tight text-white">{title}</h2>
-        <p className="max-w-3xl text-sm leading-6 text-slate-400">{description}</p>
-      </div>
-    </section>
-  );
-}
-
-function ComingSoonPanel({
-  title,
-  description,
-  cards,
-}: {
-  title: string;
-  description: string;
-  cards: InstantRecallCard[];
-}) {
-  const systems = Array.from(new Set(cards.map((card) => card.system))).slice(0, 6);
-
-  return (
-    <Card className="spark-panel rounded-2xl">
-      <CardHeader className="border-b border-white/10">
-        <CardTitle className="text-slate-100">{title}</CardTitle>
-        <CardDescription className="text-slate-400">{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
-          <div className="text-xs font-bold uppercase text-slate-400">Status</div>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            This is intentionally marked as coming soon so the prototype does not imply unavailable learning workflows are active.
-          </p>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
-          <div className="text-xs font-bold uppercase text-slate-400">Current deck context</div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Badge variant="outline">{cards.length} draft cards</Badge>
-            {systems.map((system) => (
-              <Badge key={system} variant="secondary">{system}</Badge>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DashboardPreview({
-  summary,
-  cards,
-  reviewMetrics,
-}: {
-  summary: DashboardSummary;
-  cards: InstantRecallCard[];
-  reviewMetrics: ReviewMetrics;
-}) {
-  const highPriority = cards.filter((card) => card.difficulty === "hard").length;
-
-  return (
-    <Card className="spark-panel rounded-2xl">
-      <CardHeader className="border-b border-white/10">
-        <CardTitle className="flex items-center gap-2 text-slate-100">
-          <ActivityIcon className="size-5 text-sky-300" aria-hidden="true" />
-          Dashboard
-        </CardTitle>
-        <CardDescription className="text-slate-400">At-a-glance spaced repetition and deck quality.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        <div className="grid grid-cols-2 gap-2">
-          <MetricTile label="Total Cards" value={String(summary.total)} accent="text-sky-200" />
-          <MetricTile label="Visible Cards" value={String(summary.filtered)} accent="text-cyan-200" />
-          <MetricTile label="Due Today" value={String(reviewMetrics.dueToday)} accent="text-violet-200" />
-          <MetricTile label="Must Not Miss" value={String(highPriority)} accent="text-rose-200" />
-          <MetricTile label="Avg Fluency" value={`${reviewMetrics.averageFluency}%`} accent="text-emerald-200" />
-        </div>
-        <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-          <div className="text-xs font-bold uppercase text-slate-400">Fluency Overview</div>
-          <div className="flex items-end gap-2" aria-hidden="true">
-            {[
-              reviewMetrics.redCount * 18,
-              reviewMetrics.yellowCount * 18,
-              reviewMetrics.greenCount * 18,
-              reviewMetrics.reviewedToday * 18,
-              reviewMetrics.dueToday * 8,
-              reviewMetrics.bookmarkedCount * 18,
-            ].map((height, index) => (
-              <div key={index} className="flex flex-1 items-end rounded bg-white/[0.04]" style={{ height: 72 }}>
-                <div className="spark-mini-chart-bar w-full rounded" style={{ height: `${Math.min(100, Math.max(8, height))}%` }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MetricTile({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-black/[0.18] p-3">
-      <div className="text-[0.68rem] font-bold uppercase text-slate-500">{label}</div>
-      <div className={cn("mt-1 text-2xl font-bold leading-none", accent)}>{value}</div>
-    </div>
-  );
-}
-
-function DailyReviewQueue({
-  reviewMetrics,
-  selectedCardId,
-  onSelect,
-}: {
-  reviewMetrics: ReviewMetrics;
-  selectedCardId: string;
-  onSelect: (cardId: string) => void;
-}) {
-  const estimatedMinutes = Math.max(1, Math.round(reviewMetrics.queue.reduce((total, item) => total + item.estimateSeconds, 0) / 60));
-
-  return (
-    <Card className="spark-panel rounded-2xl">
-      <CardHeader className="border-b border-white/10">
-        <CardTitle className="flex items-center gap-2 text-slate-100">
-          <BookOpenCheckIcon className="size-5 text-emerald-300" aria-hidden="true" />
-          Daily Review Queue
-        </CardTitle>
-        <CardDescription className="text-slate-400">
-          {reviewMetrics.dueToday} cards due today · estimated {estimatedMinutes} min.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-2">
-        {reviewMetrics.queue.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
-            No cards are due based on the local review state.
-          </div>
-        ) : reviewMetrics.queue.slice(0, 5).map(({ card, estimateSeconds }) => (
-          <button
-            key={card.id}
-            type="button"
-            aria-label={`Open daily review card ${card.title}`}
-            onClick={() => onSelect(card.id)}
-            className={cn(
-              "flex items-start justify-between gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25",
-              selectedCardId === card.id ? "border-sky-300/28 bg-sky-400/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]",
-            )}
-          >
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-slate-100">{card.title}</span>
-              <span className="mt-1 block text-xs text-slate-500">{card.discipline} · {formatDifficulty(card.difficulty)}</span>
-            </span>
-            <span className="shrink-0 text-xs font-semibold text-slate-400">{estimateSeconds}s</span>
-          </button>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-function AnalyticsPreview({ cards, reviewMetrics }: { cards: InstantRecallCard[]; reviewMetrics: ReviewMetrics }) {
-  const systems = useMemo(() => {
-    const counts = new Map<string, number>();
-    cards.forEach((card) => counts.set(card.system, (counts.get(card.system) ?? 0) + 1));
-    return Array.from(counts.entries()).slice(0, 6);
-  }, [cards]);
-
-  const max = Math.max(...systems.map(([, count]) => count), 1);
-
-  return (
-    <Card className="spark-panel rounded-2xl">
-      <CardHeader className="border-b border-white/10">
-        <CardTitle className="flex items-center gap-2 text-slate-100">
-          <BarChart3Icon className="size-5 text-sky-300" aria-hidden="true" />
-          Analytics
-        </CardTitle>
-        <CardDescription className="text-slate-400">Deck composition and review readiness.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid gap-2">
-          {systems.map(([system, count]) => (
-            <div key={system}>
-              <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-slate-300">{system}</span>
-                <span className="font-semibold text-slate-400">{count}</span>
-              </div>
-              <div className="h-2 rounded-full bg-white/[0.06]">
-                <div className="h-full rounded-full bg-sky-400" style={{ width: `${Math.max(16, (count / max) * 100)}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm leading-6 text-slate-300">
-          Draft cards: <strong className="text-amber-200">{cards.filter((card) => card.status === "draft").length}</strong>. Reviewed cards:{" "}
-          <strong className="text-emerald-200">{cards.filter((card) => card.status === "reviewed").length}</strong>. Local review fluency:{" "}
-          <strong className="text-sky-200">{reviewMetrics.averageFluency}%</strong>.
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function getSectionMeta(section: InstantRecallSection) {
   const copy: Record<InstantRecallSection, { title: string; description: string }> = {
     dashboard: {
-      title: "Dashboard",
-      description: "Instant Recall workspace with live deck metrics, filters, review queue, editor, analytics, and priority concepts.",
+      title: "Today",
+      description: "Start here: review due cards, see risk signals, and jump into the card library when you need targeted practice.",
     },
     "daily-review": {
-      title: "Daily Review",
-      description: "Work through cards due from local review signals, then save confidence and fluency back to this browser.",
+      title: "Review",
+      description: "A focused recall cockpit for the selected card: predict, reveal, explain, then save confidence and fluency locally.",
     },
     "card-library": {
-      title: "Card Library",
-      description: "Search, filter, and select cards by system, discipline, difficulty, status, tags, and recognition cues.",
+      title: "Library",
+      description: "Search and filter the local deck by task, trap, visual availability, system, difficulty, status, tags, and review state.",
     },
     "must-not-miss": {
       title: "Must Not Miss",
       description: "High-risk concepts surfaced from the current deck using difficulty and tag signals.",
     },
     analytics: {
-      title: "Analytics",
+      title: "Progress",
       description: "Prototype analytics derived from deck composition and local review state.",
     },
     "card-editor": {
       title: "Card Editor",
-      description: "Create or edit draft Instant Recall Cards with schema validation and review metadata.",
+      description: "Create or edit draft cards, including the learner-facing task prompt and medical review metadata.",
     },
     "import-text": {
       title: "Import from Text",
-      description: "Import, merge, replace, export, or reset the local JSON deck safely.",
+      description: "Import, merge, replace, export, or reset the local JSON deck while preserving schema validation.",
     },
     "concept-map": {
       title: "Concept Map",
-      description: "Planned graph workspace for connecting systems, mechanisms, tags, and related cards.",
+      description: "Explore the current deck context by system, tag, mechanism, and related card signals. Full graph view is planned.",
     },
     "nbme-challenge": {
       title: "NBME Challenge",
@@ -766,42 +626,6 @@ function getSectionMeta(section: InstantRecallSection) {
   return copy[section] ?? copy.dashboard;
 }
 
-function MustNotMissConcepts({ cards }: { cards: InstantRecallCard[] }) {
-  const concepts = cards
-    .filter((card) => card.difficulty !== "easy")
-    .slice(0, 7)
-    .map((card) => ({
-      title: card.title,
-      system: card.system,
-      count: card.difficulty === "hard" ? 20 : 12,
-    }));
-
-  return (
-    <Card className="spark-panel rounded-2xl">
-      <CardHeader className="border-b border-white/10">
-        <CardTitle className="flex items-center gap-2 text-slate-100">
-          <ShieldAlertIcon className="size-5 text-rose-300" aria-hidden="true" />
-          Must Not Miss
-        </CardTitle>
-        <CardDescription className="text-slate-400">High-yield concepts organized by risk.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-2">
-        {concepts.map((concept) => (
-          <div key={concept.title} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-slate-100">{concept.title}</div>
-              <div className="mt-1 text-xs text-slate-500">{concept.system}</div>
-            </div>
-            <Badge className="border-rose-300/16 bg-rose-500/10 text-rose-100" variant="outline">
-              {concept.count}
-            </Badge>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
 function MobileStudyPreview({
   card,
   revealed,
@@ -813,6 +637,8 @@ function MobileStudyPreview({
   cardIndex: number;
   totalCards: number;
 }) {
+  const primaryMedia = card.visualMedia[0];
+
   return (
     <div className="spark-phone-shell hidden rounded-[2rem] p-3 xl:block 2xl:hidden" aria-label="Mobile card preview">
       <div className="rounded-[1.45rem] border border-white/10 bg-slate-950 p-4">
@@ -825,8 +651,17 @@ function MobileStudyPreview({
           <span className="spark-badge spark-badge-gold rounded px-1.5 py-0.5 text-[0.62rem] font-bold">ROI 5</span>
           <span className="spark-badge spark-badge-rose rounded px-1.5 py-0.5 text-[0.62rem] font-bold">Must Not Miss</span>
         </div>
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-          <div className="text-xs font-bold uppercase text-sky-200">Clinical Scenario</div>
+        <div className="mt-4">
+          <div className="text-xs font-bold uppercase text-violet-200">Your task</div>
+          <p className="mt-1 text-sm font-bold leading-5 text-white">{getCardTaskPrompt(card)}</p>
+        </div>
+        {primaryMedia ? (
+          <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white">
+            <img src={resolvePublicAsset(primaryMedia.imageUrl)} alt="" className="h-40 w-full object-contain" />
+          </div>
+        ) : null}
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+          <div className="text-xs font-bold uppercase text-sky-200">Clinical scenario</div>
           <p className="mt-2 line-clamp-5 text-xs leading-5 text-slate-200">{card.frontPrompt}</p>
         </div>
         <div className="mt-3 rounded-xl bg-violet-500/80 px-3 py-2 text-center text-xs font-bold text-white">
@@ -840,6 +675,8 @@ function MobileStudyPreview({
 function KeyboardShortcutStrip() {
   const shortcuts = [
     ["Space", "Reveal Answer"],
+    ["← / →", "Previous / Next Card"],
+    ["↑ / ↓", "Move Cards / Sections"],
     ["1-5", "Confidence"],
     ["R", "Red Fluency"],
     ["Y", "Yellow Fluency"],
@@ -872,12 +709,37 @@ function formatDifficulty(difficulty: InstantRecallCard["difficulty"]) {
   return difficulty === "easy" ? "Low" : difficulty === "medium" ? "Medium" : "High";
 }
 
-function isTypingTarget(target: EventTarget | null) {
+function getAdjacentSection(section: InstantRecallSection, direction: "next" | "previous") {
+  const currentIndex = Math.max(0, keyboardSectionOrder.indexOf(section));
+  const offset = direction === "next" ? 1 : -1;
+  const nextIndex = (currentIndex + offset + keyboardSectionOrder.length) % keyboardSectionOrder.length;
+
+  return keyboardSectionOrder[nextIndex] ?? "dashboard";
+}
+
+function focusViewerSoon(ref: { current: HTMLElement | null }) {
+  window.setTimeout(() => {
+    ref.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    ref.current?.focus({ preventScroll: true });
+  }, 0);
+}
+
+function isGlobalShortcutBlocked(target: EventTarget | null) {
+  if (document.body.dataset.stepsparkModalOpen === "true") {
+    return true;
+  }
+
   if (!(target instanceof HTMLElement)) {
     return false;
   }
 
   const tagName = target.tagName.toLowerCase();
 
-  return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    target.isContentEditable ||
+    Boolean(target.closest("[role='dialog'], [role='combobox'], [role='listbox'], [data-command-search='true']"))
+  );
 }

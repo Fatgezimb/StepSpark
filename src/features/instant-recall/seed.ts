@@ -47,6 +47,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-001",
     title: "Reed-Sternberg Recognition",
+    taskPrompt: "Inspect the histology image and identify the lymphoma pattern.",
     frontPrompt: "Painless cervical lymphadenopathy with large owl-eye cells on biopsy.",
     visualCue: "Binucleated owl-eye cell in a lymph node field.",
     answer: "Hodgkin lymphoma with Reed-Sternberg cells, classically CD15+ and CD30+.",
@@ -79,6 +80,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-002",
     title: "G6PD Oxidative Stress",
+    taskPrompt: "Use the smear clue and exposure history to identify the hemolysis mechanism.",
     frontPrompt: "Hemolysis after fava beans, sulfa drugs, or infection with bite cells on smear.",
     visualCue: "Red cells with membrane bites and Heinz body clue.",
     answer: "G6PD deficiency causing oxidative hemolysis.",
@@ -111,6 +113,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-003",
     title: "DiGeorge Pattern",
+    taskPrompt: "Identify the syndrome linking thymic absence, hypocalcemia, and recurrent infections.",
     frontPrompt: "Recurrent viral/fungal infections, hypocalcemia, abnormal facies, and absent thymic shadow.",
     visualCue: "Absent thymus plus low calcium tetany clue.",
     answer: "DiGeorge syndrome from 22q11 deletion with failed third and fourth pharyngeal pouch development.",
@@ -141,6 +144,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-004",
     title: "HOCM Maneuver",
+    taskPrompt: "Predict which murmur mechanism worsens when preload decreases.",
     frontPrompt: "Systolic murmur that increases with Valsalva or standing.",
     visualCue: "Narrower left ventricular chamber worsening outflow obstruction.",
     answer: "Hypertrophic obstructive cardiomyopathy.",
@@ -171,6 +175,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-005",
     title: "B12 Neuro Clue",
+    taskPrompt: "Separate the vitamin deficiency that causes macrocytosis plus neurologic findings.",
     frontPrompt: "Macrocytic anemia with paresthesias, impaired vibration sense, and elevated methylmalonic acid.",
     visualCue: "Large oval red cells plus posterior column symptoms.",
     answer: "Vitamin B12 deficiency.",
@@ -201,6 +206,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-006",
     title: "Trousseau Signal",
+    taskPrompt: "Identify the malignancy association behind migratory thrombophlebitis.",
     frontPrompt: "Migratory thrombophlebitis in a patient with weight loss and epigastric pain radiating to the back.",
     visualCue: "Moving superficial clots plus pancreatic silhouette.",
     answer: "Trousseau syndrome associated with pancreatic adenocarcinoma.",
@@ -231,6 +237,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-007",
     title: "Duodenal Atresia Image",
+    taskPrompt: "Inspect the radiograph pattern and identify the neonatal obstruction.",
     frontPrompt: "Newborn with bilious vomiting and a double-bubble sign on imaging.",
     visualCue: "Two adjacent gas bubbles in the upper abdomen.",
     answer: "Duodenal atresia, classically associated with Down syndrome.",
@@ -263,6 +270,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-008",
     title: "Papillary Thyroid Cue",
+    taskPrompt: "Use the cytology clues to identify the thyroid cancer pattern.",
     frontPrompt: "Thyroid cancer with Orphan Annie eye nuclei and psammoma bodies.",
     visualCue: "Clear nuclei with laminated calcified spheres.",
     answer: "Papillary thyroid carcinoma.",
@@ -295,6 +303,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-009",
     title: "Sarcoid Granuloma",
+    taskPrompt: "Identify the disease suggested by noncaseating granulomas and hilar lymphadenopathy.",
     frontPrompt: "Bilateral hilar lymphadenopathy, noncaseating granulomas, and elevated ACE.",
     visualCue: "Tight granuloma without central caseation.",
     answer: "Sarcoidosis.",
@@ -327,6 +336,7 @@ export const seedInstantRecallCards: InstantRecallCard[] = [
   seedCard({
     id: "irc-010",
     title: "Behcet Triad",
+    taskPrompt: "Recognize the vasculitis pattern from recurrent oral, genital, and ocular findings.",
     frontPrompt: "Recurrent painful oral ulcers, genital ulcers, and uveitis.",
     visualCue: "Mucosal ulcers plus inflamed eye.",
     answer: "Behcet disease, a variable-vessel vasculitis associated with HLA-B51.",

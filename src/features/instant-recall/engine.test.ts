@@ -7,6 +7,7 @@ import {
   duplicateCard,
   filterCards,
   getAdjacentCardId,
+  getCardTaskPrompt,
   getCardValidationMessage,
   parseCardImport,
   parseTags,
@@ -15,7 +16,7 @@ import {
 } from "./engine";
 import { resolvePublicAsset } from "./assets";
 import { seedInstantRecallCards } from "./seed";
-import { CARD_SCHEMA_VERSION, DECK_SCHEMA_VERSION } from "./schema";
+import { CARD_SCHEMA_VERSION, DECK_SCHEMA_VERSION, instantRecallCardSchema } from "./schema";
 
 describe("Instant Recall card engine", () => {
   it("normalizes and deduplicates tags", () => {
@@ -37,6 +38,17 @@ describe("Instant Recall card engine", () => {
 
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.title).toBe("Reed-Sternberg Recognition");
+  });
+
+  it("accepts optional task prompts and derives a clear fallback", () => {
+    const cardWithTask = instantRecallCardSchema.parse(seedInstantRecallCards[0]);
+    const { taskPrompt, ...cardWithoutTask } = seedInstantRecallCards[1]!;
+    const parsedWithoutTask = instantRecallCardSchema.parse(cardWithoutTask);
+
+    expect(taskPrompt).toBeTruthy();
+    expect(getCardTaskPrompt(cardWithTask)).toContain("lymphoma pattern");
+    expect(parsedWithoutTask.taskPrompt).toBeUndefined();
+    expect(getCardTaskPrompt(parsedWithoutTask)).toContain("Inspect the visual and clinical stem");
   });
 
   it("wraps adjacent card navigation", () => {
@@ -89,6 +101,33 @@ describe("Instant Recall card engine", () => {
     });
     expect(imported[0]?.learningObjective).toContain("Imported card requires");
     expect(imported[0]?.citations[0]?.label).toBe("Imported deck");
+  });
+
+  it("preserves imported task prompts when provided", () => {
+    const [imported] = parseCardImport(
+      JSON.stringify([
+        {
+          id: "task-import-1",
+          title: "Task Import",
+          taskPrompt: "Identify the mechanism from the visual clue.",
+          frontPrompt: "Prompt",
+          visualCue: "Cue",
+          answer: "Answer",
+          explanation: "Explanation",
+          trap: "Trap",
+          system: "Pathology",
+          discipline: "Pathology",
+          difficulty: "medium",
+          status: "draft",
+          tags: [],
+          sourceNote: "Imported source.",
+          createdAt: "2026-06-28T00:00:00.000Z",
+          updatedAt: "2026-06-28T00:00:00.000Z",
+        },
+      ]),
+    );
+
+    expect(imported?.taskPrompt).toBe("Identify the mechanism from the visual clue.");
   });
 
   it("rejects malformed imports with actionable errors", () => {

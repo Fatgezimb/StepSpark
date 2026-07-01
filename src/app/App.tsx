@@ -26,7 +26,7 @@ import { Button } from "@/design-system/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/components/ui/card";
 import { Input } from "@/design-system/components/ui/input";
 import { cn } from "@/design-system/lib/utils";
-import { clearRecallFilters } from "@/features/instant-recall/engine";
+import { clearRecallFilters, getCardTaskPrompt } from "@/features/instant-recall/engine";
 import {
   InstantRecallEngine,
   type InstantRecallCardsState,
@@ -43,20 +43,23 @@ type NavItem = {
   badge?: string;
 };
 
-const mainNavItems: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: HomeIcon },
-  { id: "daily-review", label: "Daily Review", icon: BookOpenCheckIcon, badge: "23" },
-  { id: "card-library", label: "Card Library", icon: LibraryIcon },
+const studyNavItems: NavItem[] = [
+  { id: "dashboard", label: "Today", icon: HomeIcon },
+  { id: "daily-review", label: "Review", icon: BookOpenCheckIcon, badge: "23" },
+  { id: "card-library", label: "Library", icon: LibraryIcon },
   { id: "must-not-miss", label: "Must Not Miss", icon: StarIcon },
-  { id: "analytics", label: "Analytics", icon: BarChart3Icon },
 ];
 
-const createNavItems: NavItem[] = [
-  { id: "card-editor", label: "Card Editor", icon: Edit3Icon },
-  { id: "import-text", label: "Import from Text", icon: ImportIcon },
+const buildNavItems: NavItem[] = [
+  { id: "card-editor", label: "Create Card", icon: Edit3Icon },
+  { id: "import-text", label: "Import Deck", icon: ImportIcon },
 ];
 
-const toolNavItems: NavItem[] = [
+const insightNavItems: NavItem[] = [
+  { id: "analytics", label: "Progress", icon: BarChart3Icon },
+];
+
+const prototypeNavItems: NavItem[] = [
   { id: "concept-map", label: "Concept Map", icon: NetworkIcon, badge: "New" },
   { id: "nbme-challenge", label: "NBME Challenge", icon: TargetIcon, badge: "Beta" },
 ];
@@ -69,7 +72,7 @@ function App() {
   const commandRef = useRef<HTMLInputElement>(null);
 
   const mainItems = useMemo(
-    () => mainNavItems.map((item) => (item.id === "daily-review" ? { ...item, badge: String(cardsState.reviewMetrics.dueToday) } : item)),
+    () => studyNavItems.map((item) => (item.id === "daily-review" ? { ...item, badge: String(cardsState.reviewMetrics.dueToday) } : item)),
     [cardsState.reviewMetrics.dueToday],
   );
 
@@ -158,9 +161,10 @@ function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 overflow-auto p-3" aria-label="Primary navigation">
-        <NavGroup label="Main" items={mainItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
-        <NavGroup label="Create" items={createNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
-        <NavGroup label="Tools" items={toolNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
+        <NavGroup label="Study" items={mainItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
+        <NavGroup label="Build" items={buildNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
+        <NavGroup label="Insights" items={insightNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
+        <NavGroup label="Prototype" items={prototypeNavItems} activeNav={activeNav} collapsed={collapsed} onNavigate={onNavigate} />
         <ProgressWidget collapsed={collapsed} reviewMetrics={reviewMetrics} />
       </nav>
 
@@ -322,7 +326,7 @@ function TopCommandBar({
     if (result.kind === "card") {
       cardsState.setFilters(clearRecallFilters());
       cardsState.selectCard(result.cardId);
-      onNavigate("dashboard");
+      onNavigate("daily-review");
     }
 
     if (result.kind === "section") {
@@ -364,7 +368,7 @@ function TopCommandBar({
           <Badge className="border-violet-400/25 bg-violet-500/15 text-violet-100" variant="outline">Preview</Badge>
         </div>
 
-        <div className="relative w-full max-w-[28rem] lg:ms-1">
+        <div className="relative w-full max-w-[28rem] lg:ms-1" data-command-search="true">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             ref={commandRef}
@@ -374,6 +378,12 @@ function TopCommandBar({
               if (event.key === "Enter" && results[0]) {
                 event.preventDefault();
                 selectResult(results[0]);
+              }
+
+              if (event.key === "Escape") {
+                event.preventDefault();
+                onQueryChange("");
+                commandRef.current?.blur();
               }
             }}
             className="h-10 border-white/10 bg-black/30 ps-9 pe-16 text-slate-100 shadow-inner placeholder:text-slate-500"
@@ -451,6 +461,7 @@ function CommandResults({
       animate={{ opacity: 1, y: 0 }}
       className="spark-panel absolute left-0 right-0 top-12 z-40 rounded-xl p-2 shadow-popover"
       id="top-command-results"
+      data-command-search="true"
       role="region"
       aria-label="Command search results"
     >
@@ -486,10 +497,14 @@ function MobileNavigation({
   mainItems: NavItem[];
   onNavigate: (id: InstantRecallSection) => void;
 }) {
-  const mobileItems = [...mainItems, ...createNavItems, ...toolNavItems];
+  const mobileItems = [
+    ...mainItems,
+    ...insightNavItems,
+    buildNavItems[0]!,
+  ];
 
   return (
-    <nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="Mobile navigation">
+    <nav className="grid grid-cols-3 gap-2 pb-1 sm:grid-cols-6 lg:hidden" aria-label="Mobile navigation">
       {mobileItems.map((item) => (
         <button
           key={item.id}
@@ -497,9 +512,8 @@ function MobileNavigation({
           aria-current={activeNav === item.id ? "page" : undefined}
           onClick={() => onNavigate(item.id)}
           className={cn(
-            "spark-panel flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25",
-            "min-w-[5.7rem]",
-            activeNav === item.id ? "text-white" : "text-slate-400",
+            "spark-panel flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-sky-400/25",
+            activeNav === item.id ? "border-cyan-300/20 bg-cyan-400/10 text-white" : "text-slate-400",
           )}
         >
           <item.icon className="size-4" aria-hidden="true" />
@@ -517,7 +531,7 @@ function buildSearchResults(query: string, cards: InstantRecallCard[], tags: str
     return [];
   }
 
-  const sections = [...mainNavItems, ...createNavItems, ...toolNavItems].map((item) => ({
+  const sections = [...studyNavItems, ...buildNavItems, ...insightNavItems, ...prototypeNavItems].map((item) => ({
     kind: "section" as const,
     id: `section-${item.id}`,
     label: item.label,
@@ -554,7 +568,7 @@ function buildSearchResults(query: string, cards: InstantRecallCard[], tags: str
       detail: "Filter by organ system",
       value: system,
     }));
-  const conceptResults = Array.from(new Set(cards.flatMap((card) => [card.discipline, card.visualCue, card.learningObjective])))
+  const conceptResults = Array.from(new Set(cards.flatMap((card) => [card.discipline, card.visualCue, getCardTaskPrompt(card), card.learningObjective])))
     .filter((concept) => concept.toLowerCase().includes(normalizedQuery))
     .slice(0, 3)
     .map((concept) => ({
@@ -572,6 +586,7 @@ function buildSearchResults(query: string, cards: InstantRecallCard[], tags: str
 function getCardSearchText(card: InstantRecallCard) {
   return [
     card.title,
+    getCardTaskPrompt(card),
     card.frontPrompt,
     card.visualCue,
     card.answer,

@@ -24,6 +24,14 @@ Every visual asset must include:
 
 Open medical images must include `sourceUrl` and attribution when the license requires it.
 
+## Display Requirements
+
+- Medical images and diagrams should default to `object-contain`, not aggressive cropping.
+- Remote or slow-loading media should show an explicit loading state rather than an empty frame.
+- The learner must be able to inspect a larger version with caption, source, license, and close controls.
+- Labels and metadata should sit outside the image canvas so they do not obscure diagnostic details.
+- If an image fails to load, the card must still show the task, clinical scenario, source/license metadata, and a full-image fallback view.
+
 ## Current Local LLM Roles
 
 Installed Ollama models:

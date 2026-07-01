@@ -70,6 +70,7 @@ export const instantRecallCardSchema = z
     schemaVersion: z.literal(CARD_SCHEMA_VERSION),
     id: z.string().trim().min(1, "Card id is required.").max(120),
     title: z.string().trim().min(1, "Title is required.").max(140),
+    taskPrompt: z.string().trim().max(320).optional(),
     frontPrompt: z.string().trim().min(1, "Recall prompt is required.").max(1_000),
     visualCue: z.string().trim().min(1, "Visual cue is required.").max(1_000),
     answer: z.string().trim().min(1, "Answer is required.").max(1_000),
@@ -162,6 +163,7 @@ export const defaultRecallFilters: RecallFilters = {
 export const emptyCardDraft: Omit<InstantRecallCard, "id" | "createdAt" | "updatedAt"> = {
   schemaVersion: CARD_SCHEMA_VERSION,
   title: "",
+  taskPrompt: "",
   frontPrompt: "",
   visualCue: "",
   answer: "",

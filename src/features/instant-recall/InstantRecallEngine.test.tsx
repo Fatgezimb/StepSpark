@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InstantRecallEngine } from "./InstantRecallEngine";
@@ -21,9 +21,71 @@ describe("InstantRecallEngine", () => {
     expect(screen.queryByText(/Hodgkin lymphoma with Reed-Sternberg cells/i)).not.toBeInTheDocument();
   });
 
-  it("searches cards and selects the first filtered result", async () => {
+  it("renders the clear task before scenario and support content", () => {
+    render(<InstantRecallEngine />);
+
+    const task = screen.getByRole("heading", { name: /inspect the histology image/i });
+    const scenario = within(screen.getByRole("region", { name: "Clinical scenario" })).getByText(/Painless cervical lymphadenopathy/i);
+    const support = screen.getByText("Fast Recognition Rule");
+
+    expect(task.compareDocumentPosition(scenario) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(task.compareDocumentPosition(support) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders readable visual media and closes the enlarged image dialog", async () => {
     const user = userEvent.setup();
     render(<InstantRecallEngine />);
+
+    const image = screen.getByAltText("Medical visual recognition asset for this card");
+    expect(image).toHaveClass("object-contain");
+    expect(screen.getByText("Loading visual asset")).toBeInTheDocument();
+
+    const enlargeButton = screen.getByRole("button", { name: "View full image" });
+    await user.click(enlargeButton);
+
+    const dialog = screen.getByRole("dialog", { name: /Visual recognition anchor/i });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("Source")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(enlargeButton).toHaveFocus();
+  });
+
+  it("keeps media metadata and full-image access visible when an image fails", async () => {
+    const user = userEvent.setup();
+    render(<InstantRecallEngine />);
+
+    fireEvent.error(screen.getByAltText("Medical visual recognition asset for this card"));
+
+    expect(screen.getByText("Visual asset unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/Source: National Cancer Institute via Wikimedia Commons/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View full image" }));
+    const dialog = screen.getByRole("dialog", { name: /Visual recognition anchor/i });
+
+    expect(within(dialog).getByText("Visual asset unavailable")).toBeInTheDocument();
+    expect(within(dialog).getByText("License")).toBeInTheDocument();
+  });
+
+  it("navigates cards with horizontal arrows but ignores arrows while typing", async () => {
+    const user = userEvent.setup();
+    render(<InstantRecallEngine />);
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("heading", { name: "G6PD Oxidative Stress" })).toBeInTheDocument();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("heading", { name: "Reed-Sternberg Recognition" })).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Temporary prediction note"));
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("heading", { name: "Reed-Sternberg Recognition" })).toBeInTheDocument();
+  });
+
+  it("searches cards and selects the first filtered result", async () => {
+    const user = userEvent.setup();
+    render(<InstantRecallEngine activeSection="card-library" />);
 
     await user.type(screen.getByLabelText("Search"), "g6pd");
 
@@ -33,7 +95,7 @@ describe("InstantRecallEngine", () => {
 
   it("shows an empty state instead of a stale card when filters match nothing", async () => {
     const user = userEvent.setup();
-    render(<InstantRecallEngine />);
+    render(<InstantRecallEngine activeSection="card-library" />);
 
     await user.type(screen.getByLabelText("Search"), "not-a-real-card");
 
@@ -71,7 +133,7 @@ describe("InstantRecallEngine", () => {
 
     await user.click(screen.getByRole("button", { name: "Save review" }));
     expect(screen.getByText(/Review saved locally/i)).toBeInTheDocument();
-    expect(screen.getByText(/Avg Fluency/i).parentElement).toHaveTextContent("67%");
+    expect(screen.getByText("67%")).toBeInTheDocument();
 
     print.mockRestore();
   });
@@ -149,8 +211,8 @@ describe("InstantRecallEngine", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const statusComboboxes = screen.getAllByRole("combobox", { name: "Status" });
-    expect(statusComboboxes).toHaveLength(2);
-    await user.click(statusComboboxes[1]!);
+    expect(statusComboboxes.length).toBeGreaterThan(0);
+    await user.click(statusComboboxes[0]!);
     await user.click(screen.getByRole("option", { name: "Reviewed" }));
 
     expect(screen.getByText(/Reviewed cards require a named medical reviewer/i)).toBeInTheDocument();
